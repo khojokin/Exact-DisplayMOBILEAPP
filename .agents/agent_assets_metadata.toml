@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "lyrAsYTtRGupmSJQda4U_"
+uri = "file://artifacts/sda-community/assets/images/icon.png"
+type = "image"
+title = "sda-app-icon"
+
+[[generated]]
+id = "8RXCMwC4c4srpcloUz67k"
+uri = "file://artifacts/sda-community/assets/images/banner.png"
+type = "image"
+title = "sda-community-banner"

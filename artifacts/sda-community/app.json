@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "SDA Community",
+    "slug": "sda-community",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "sda-community",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sdacommunity.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "backgroundColor": "#0A0A0A"
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://bf38caff-17cb-42b3-9bbe-f4a70b83300a-00-3ekt4pzyxikvn.janeway.replit.dev/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://bf38caff-17cb-42b3-9bbe-f4a70b83300a-00-3ekt4pzyxikvn.janeway.replit.dev/"
+      },
+      "eas": {
+        "projectId": "86a3cc72-d8a2-415c-a2d5-4fd8864f89f1"
+      }
+    }
+  }
+}
