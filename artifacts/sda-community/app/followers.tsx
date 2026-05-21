@@ -72,19 +72,16 @@ export default function FollowersScreen() {
 
   const [members, setMembers] = useState<Member[]>(ALL_MEMBERS);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
 
   function toggleFollow(id: string) {
     Haptics.selectionAsync();
     setMembers((prev) => prev.map((m) => m.id === id ? { ...m, isFollowing: !m.isFollowing } : m));
   }
 
-  const filtered = members.filter((m) => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.description.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = activeFilter === "all" || m.roleCategory === activeFilter;
-    return matchSearch && matchFilter;
-  });
+  const filtered = members.filter((m) =>
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
+    m.description.toLowerCase().includes(search.toLowerCase())
+  );
 
   const followingCount = members.filter((m) => m.isFollowing).length;
 
@@ -121,23 +118,6 @@ export default function FollowersScreen() {
         )}
       </View>
 
-      {/* Filter pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersRow}
-        contentContainerStyle={styles.filtersContent}
-      >
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.id}
-            style={[styles.filterPill, activeFilter === f.id && styles.filterPillActive]}
-            onPress={() => { Haptics.selectionAsync(); setActiveFilter(f.id); }}
-          >
-            <Text style={[styles.filterText, activeFilter === f.id && styles.filterTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       {/* List */}
       <FlatList
@@ -164,16 +144,8 @@ export default function FollowersScreen() {
             <View style={styles.info}>
               <View style={styles.nameRow}>
                 <Text style={styles.name}>{item.name}</Text>
-                {item.role && (
-                  <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[item.role] ?? "#636366") + "33" }]}>
-                    <Text style={[styles.roleText, { color: ROLE_COLOR[item.role] ?? "#636366" }]}>{item.role}</Text>
-                  </View>
-                )}
               </View>
               <Text style={styles.desc} numberOfLines={1}>{item.description}</Text>
-              {item.streak && (
-                <Text style={styles.streak}>🔥 {item.streak} day streak</Text>
-              )}
             </View>
             <TouchableOpacity
               style={[styles.followBtn, item.isFollowing && styles.followingBtn]}

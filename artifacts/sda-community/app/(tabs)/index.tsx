@@ -120,8 +120,8 @@ type FeedItem =
 
 const STORIES = [
   { id: "you", label: "Your Story", color: "#4A6741", isYou: true },
-  { id: "pj", label: "Pastor", color: "#3B5BDB", initials: "PJ" },
-  { id: "er", label: "Elder", color: "#B8860B", initials: "ER" },
+  { id: "pj", label: "James", color: "#3B5BDB", initials: "PJ" },
+  { id: "er", label: "Ruth", color: "#B8860B", initials: "ER" },
   { id: "ga", label: "Grace", color: "#0E7B5B", initials: "GA" },
   { id: "ao", label: "Abigail", color: "#8B3A8B", initials: "AO" },
   { id: "dm", label: "David", color: "#C85200", initials: "DM" },

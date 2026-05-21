@@ -147,9 +147,6 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.followedByText}>{PROFILE.followedBy}</Text>
           </View>
-          <View style={styles.streakRow}>
-            <Text style={styles.streakText}>🔥 {PROFILE.streak} day reading streak</Text>
-          </View>
         </View>
 
         <View style={styles.actionRow}>

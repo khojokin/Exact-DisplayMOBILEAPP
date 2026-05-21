@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -40,7 +41,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="settings"
-        options={{ headerShown: false, presentation: "modal" }}
+        options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
         name="post/[id]"
@@ -48,7 +49,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="edit-profile"
-        options={{ headerShown: false, presentation: "modal" }}
+        options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
         name="followers"
@@ -56,7 +57,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="story/[id]"
-        options={{ headerShown: false, presentation: "fullScreenModal" }}
+        options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
         name="dm/[id]"
@@ -64,7 +65,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="call/[id]"
-        options={{ headerShown: false, presentation: "fullScreenModal" }}
+        options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
         name="members"
@@ -104,7 +105,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!fontsLoaded && !fontError) return <SafeAreaProvider><View style={{ flex: 1, backgroundColor: "#0A0A0A" }} /></SafeAreaProvider>;
 
   return (
     <SafeAreaProvider>
