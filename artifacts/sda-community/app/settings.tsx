@@ -52,6 +52,12 @@ export default function SettingsScreen() {
       ] as SettingItem[],
     },
     {
+      title: "Subscriptions",
+      data: [
+        { id: "subscriptions", label: "Submit Verification", icon: "ribbon-outline", iconColor: "#3B5BDB", type: "nav" },
+      ] as SettingItem[],
+    },
+    {
       title: "Community",
       data: [
         { id: "blocked", label: "Blocked Members", icon: "ban-outline", iconColor: "#FF453A", type: "nav" },
@@ -86,6 +92,12 @@ export default function SettingsScreen() {
         Alert.alert("Accessibility", "Font size and display options will be available in a future update.");
         break;
       case "language": router.push("/language-settings"); break;
+      case "subscriptions":
+        Alert.alert(
+          "Submit Verification",
+          "Verification submission will be available here in the next update."
+        );
+        break;
       case "blocked": router.push("/blocked-members"); break;
       case "muted": router.push("/muted-members"); break;
       case "reported": router.push("/reported-content"); break;

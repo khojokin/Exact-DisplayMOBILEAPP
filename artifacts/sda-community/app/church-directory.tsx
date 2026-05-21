@@ -217,6 +217,8 @@ const DEPT_COLORS: Record<string, string> = {
 
 const CHURCHES = ["All Churches", "Central SDA Church", "Northside SDA Church"];
 
+const QUICK_ADD_DEPARTMENTS = DEPARTMENTS.filter((d) => d !== "All");
+
 function AvatarCircle({ initials, color, size = 48 }: { initials: string; color: string; size?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
@@ -225,17 +227,61 @@ function AvatarCircle({ initials, color, size = 48 }: { initials: string; color:
   );
 }
 
+function normalizeName(name: string) {
+  return name.replace(/^(Pastor|Elder|Deaconess|Deacon|Dr\.)\s+/i, "").trim();
+}
+
 export default function ChurchDirectoryScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
+  const [members, setMembers] = useState<ChurchMember[]>(MEMBERS);
   const [search, setSearch] = useState("");
   const [activeDept, setActiveDept] = useState("All");
   const [activeChurch, setActiveChurch] = useState("All Churches");
   const [selectedMember, setSelectedMember] = useState<ChurchMember | null>(null);
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState("");
+  const [newDepartment, setNewDepartment] = useState("Leadership");
+  const [newChurch, setNewChurch] = useState("Central SDA Church");
   const [following, setFollowing] = useState<Set<string>>(
     new Set(MEMBERS.filter((m) => m.isFollowing).map((m) => m.id))
   );
+
+  const buildInitials = useCallback((name: string) => {
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length === 0) return "NA";
+    return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+  }, []);
+
+  function handleCreateMember() {
+    const name = newName.trim();
+    const role = newRole.trim();
+    if (!name || !role) return;
+
+    const id = `m${Date.now()}`;
+    const created: ChurchMember = {
+      id,
+      name,
+      initials: buildInitials(name),
+      color: DEPT_COLORS[newDepartment] || "#636366",
+      role,
+      department: newDepartment,
+      church: newChurch,
+      joinedYear: new Date().getFullYear(),
+      bio: `${name} was added by the community directory editor.`,
+      isFollowing: false,
+      badges: [newDepartment],
+    };
+
+    setMembers((prev) => [created, ...prev]);
+    setAddModalVisible(false);
+    setNewName("");
+    setNewRole("");
+    setNewDepartment("Leadership");
+    setNewChurch("Central SDA Church");
+  }
 
   const toggleFollow = useCallback((id: string) => {
     setFollowing((prev) => {
@@ -245,7 +291,7 @@ export default function ChurchDirectoryScreen() {
     });
   }, []);
 
-  const filtered = MEMBERS.filter((m) => {
+  const filtered = members.filter((m) => {
     const matchSearch = search === "" ||
       m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.role.toLowerCase().includes(search.toLowerCase()) ||
@@ -255,8 +301,8 @@ export default function ChurchDirectoryScreen() {
     return matchSearch && matchDept && matchChurch;
   });
 
-  const leaderCount = MEMBERS.filter((m) => ["Leadership", "Deacons"].includes(m.department)).length;
-  const deptCount = new Set(MEMBERS.map((m) => m.department)).size;
+  const leaderCount = members.filter((m) => ["Leadership", "Deacons"].includes(m.department)).length;
+  const deptCount = new Set(members.map((m) => m.department)).size;
 
   return (
     <View style={styles.container}>
@@ -269,15 +315,17 @@ export default function ChurchDirectoryScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Church Directory</Text>
-          <Text style={styles.headerSub}>{MEMBERS.length} members · {deptCount} ministries</Text>
+          <Text style={styles.headerSub}>{members.length} members · {deptCount} ministries</Text>
         </View>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+          <Ionicons name="add" size={20} color="#FFF" />
+        </TouchableOpacity>
       </View>
 
       {/* Stats banner */}
       <View style={styles.statsBanner}>
         <View style={styles.statItem}>
-          <Text style={styles.statNum}>{MEMBERS.length}</Text>
+          <Text style={styles.statNum}>{members.length}</Text>
           <Text style={styles.statLabel}>Members</Text>
         </View>
         <View style={styles.statDivider} />
@@ -361,20 +409,9 @@ export default function ChurchDirectoryScreen() {
             <AvatarCircle initials={item.initials} color={item.color} size={52} />
             <View style={styles.memberInfo}>
               <View style={styles.memberNameRow}>
-                <Text style={styles.memberName}>{item.name}</Text>
-                {item.streak && item.streak >= 7 && (
-                  <View style={styles.streakBadge}>
-                    <Text style={styles.streakText}>🔥 {item.streak}</Text>
-                  </View>
-                )}
+                <Text style={styles.memberName}>{normalizeName(item.name)}</Text>
               </View>
-              <Text style={styles.memberRole}>{item.role}</Text>
               <View style={styles.memberBottom}>
-                <View style={[styles.deptTag, { backgroundColor: (DEPT_COLORS[item.department] || "#636366") + "22" }]}>
-                  <Text style={[styles.deptTagText, { color: DEPT_COLORS[item.department] || "#636366" }]}>
-                    {item.department}
-                  </Text>
-                </View>
                 <Text style={styles.memberChurch}>{item.church.replace(" SDA Church", "")}</Text>
               </View>
             </View>
@@ -409,7 +446,7 @@ export default function ChurchDirectoryScreen() {
             <Text style={styles.modalHeaderTitle}>Profile</Text>
             <TouchableOpacity
               style={styles.backBtn}
-              onPress={() => router.push({ pathname: "/user-profile", params: { name: selectedMember.name } })}
+              onPress={() => router.push({ pathname: "/user-profile", params: { name: normalizeName(selectedMember.name) } })}
             >
               <Feather name="external-link" size={18} color="#8E8E93" />
             </TouchableOpacity>
@@ -419,22 +456,12 @@ export default function ChurchDirectoryScreen() {
             {/* Profile top */}
             <View style={styles.profileTop}>
               <AvatarCircle initials={selectedMember.initials} color={selectedMember.color} size={80} />
-              <Text style={styles.profileName}>{selectedMember.name}</Text>
-              <Text style={styles.profileRole}>{selectedMember.role}</Text>
+              <Text style={styles.profileName}>{normalizeName(selectedMember.name)}</Text>
               <View style={styles.profileChurchRow}>
                 <Ionicons name="business-outline" size={12} color="#636366" />
                 <Text style={styles.profileChurch}>{selectedMember.church}</Text>
                 <Text style={styles.profileDot}>·</Text>
                 <Text style={styles.profileJoined}>Since {selectedMember.joinedYear}</Text>
-              </View>
-
-              {/* Badges */}
-              <View style={styles.badgeRow}>
-                {selectedMember.badges.map((b) => (
-                  <View key={b} style={styles.badge}>
-                    <Text style={styles.badgeText}>{b}</Text>
-                  </View>
-                ))}
               </View>
 
               {/* Follow button */}
@@ -471,17 +498,6 @@ export default function ChurchDirectoryScreen() {
                   <Text style={styles.infoSub}>{selectedMember.church}</Text>
                 </View>
               </View>
-              {selectedMember.streak && (
-                <View style={styles.infoRow}>
-                  <View style={[styles.infoIcon, { backgroundColor: "#FF6B3522" }]}>
-                    <Text style={{ fontSize: 14 }}>🔥</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.infoLabel}>{selectedMember.streak}-day devotional streak</Text>
-                    <Text style={styles.infoSub}>Active in daily Bible reading</Text>
-                  </View>
-                </View>
-              )}
             </View>
 
             {/* Contact */}
@@ -522,14 +538,70 @@ export default function ChurchDirectoryScreen() {
                 <Ionicons name="chatbubble-outline" size={18} color="#FFF" />
                 <Text style={styles.actionBtnText}>Message</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#1C1C1E" }]} onPress={() => { setSelectedMember(null); router.push("/prayer-wall"); }}>
-                <Ionicons name="hand-left-outline" size={18} color="#6B7B5A" />
-                <Text style={[styles.actionBtnText, { color: "#6B7B5A" }]}>Pray for them</Text>
-              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
       )}
+
+      <Modal visible={addModalVisible} transparent animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.addModalCard}>
+            <Text style={styles.addTitle}>Add Directory Member</Text>
+
+            <TextInput
+              style={styles.addInput}
+              placeholder="Full name"
+              placeholderTextColor="#636366"
+              value={newName}
+              onChangeText={setNewName}
+            />
+            <TextInput
+              style={styles.addInput}
+              placeholder="Role (e.g. Youth Leader)"
+              placeholderTextColor="#636366"
+              value={newRole}
+              onChangeText={setNewRole}
+            />
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.inlineChips}>
+              {QUICK_ADD_DEPARTMENTS.map((dept) => (
+                <TouchableOpacity
+                  key={dept}
+                  style={[styles.inlineChip, newDepartment === dept && styles.inlineChipActive]}
+                  onPress={() => setNewDepartment(dept)}
+                >
+                  <Text style={[styles.inlineChipText, newDepartment === dept && styles.inlineChipTextActive]}>{dept}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.inlineChips}>
+              {CHURCHES.filter((c) => c !== "All Churches").map((church) => (
+                <TouchableOpacity
+                  key={church}
+                  style={[styles.inlineChip, newChurch === church && styles.inlineChipActive]}
+                  onPress={() => setNewChurch(church)}
+                >
+                  <Text style={[styles.inlineChipText, newChurch === church && styles.inlineChipTextActive]}>{church}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.addRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddModalVisible(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, (!newName.trim() || !newRole.trim()) && styles.saveBtnDisabled]}
+                disabled={!newName.trim() || !newRole.trim()}
+                onPress={handleCreateMember}
+              >
+                <Text style={styles.saveText}>Add Member</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -544,6 +616,16 @@ const styles = StyleSheet.create({
   headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   headerSub: { color: "#636366", fontSize: 11, marginTop: 1 },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
   statsBanner: {
     flexDirection: "row", marginHorizontal: 16, marginBottom: 12,
     backgroundColor: "#111", borderRadius: 14, padding: 14,
@@ -583,12 +665,7 @@ const styles = StyleSheet.create({
   memberInfo: { flex: 1 },
   memberNameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
   memberName: { color: "#FFF", fontSize: 14, fontWeight: "600", flex: 1 },
-  streakBadge: { backgroundColor: "#FF6B3522", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  streakText: { fontSize: 10, color: "#FF6B35" },
-  memberRole: { color: "#8E8E93", fontSize: 12, marginBottom: 6 },
-  memberBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
-  deptTag: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  deptTagText: { fontSize: 10, fontWeight: "600" },
+  memberBottom: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   memberChurch: { color: "#636366", fontSize: 10 },
   followBtn: {
     borderWidth: 1, borderColor: "#2C2C2E", borderRadius: 20,
@@ -606,15 +683,11 @@ const styles = StyleSheet.create({
   },
   modalHeaderTitle: { color: "#FFF", fontSize: 17, fontWeight: "600" },
   profileTop: { alignItems: "center", padding: 24, paddingBottom: 16 },
-  profileName: { color: "#FFF", fontSize: 22, fontWeight: "700", marginTop: 14, marginBottom: 4 },
-  profileRole: { color: "#8E8E93", fontSize: 14, marginBottom: 8 },
+  profileName: { color: "#FFF", fontSize: 22, fontWeight: "700", marginTop: 14, marginBottom: 8 },
   profileChurchRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
   profileChurch: { color: "#636366", fontSize: 12 },
   profileDot: { color: "#636366", fontSize: 12 },
   profileJoined: { color: "#636366", fontSize: 12 },
-  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 18 },
-  badge: { backgroundColor: "#1C1C1E", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { color: "#8E8E93", fontSize: 11, fontWeight: "500" },
   profileFollowBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: "#3B5BDB", borderRadius: 22,
@@ -641,4 +714,58 @@ const styles = StyleSheet.create({
     gap: 8, backgroundColor: "#3B5BDB", borderRadius: 14, paddingVertical: 14,
   },
   actionBtnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  overlay: {
+    flex: 1,
+    backgroundColor: "#00000088",
+    justifyContent: "flex-end",
+  },
+  addModalCard: {
+    backgroundColor: "#111",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    padding: 16,
+    gap: 10,
+  },
+  addTitle: { color: "#FFF", fontSize: 18, fontWeight: "700", marginBottom: 4 },
+  addInput: {
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#FFF",
+    fontSize: 14,
+  },
+  inlineChips: { gap: 8, paddingVertical: 4 },
+  inlineChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
+  inlineChipActive: {
+    backgroundColor: "#3B5BDB",
+    borderColor: "#3B5BDB",
+  },
+  inlineChipText: { color: "#8E8E93", fontSize: 12, fontWeight: "600" },
+  inlineChipTextActive: { color: "#FFF" },
+  addRow: { flexDirection: "row", gap: 10, marginTop: 6 },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  cancelText: { color: "#8E8E93", fontWeight: "600" },
+  saveBtn: {
+    flex: 1,
+    backgroundColor: "#3B5BDB",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  saveBtnDisabled: { backgroundColor: "#2C2C2E" },
+  saveText: { color: "#FFF", fontWeight: "700" },
 });

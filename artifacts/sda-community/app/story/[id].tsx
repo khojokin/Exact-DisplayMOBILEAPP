@@ -24,6 +24,7 @@ const STORIES_DATA: Record<string, {
   color: string;
   bgColor: string;
   timeAgo: string;
+  createdAt: number; // timestamp in ms
   scripture?: string;
   content: string;
   icon: "book-outline" | "musical-notes-outline" | "heart-outline" | "sunny-outline" | "leaf-outline";
@@ -34,6 +35,7 @@ const STORIES_DATA: Record<string, {
     color: "#3B5BDB",
     bgColor: "#2A4A2A",
     timeAgo: "Just now",
+    createdAt: Date.now(),
     scripture: "ISAIAH 40:31",
     content: "Daily reflection shared by Pastor",
     icon: "book-outline",
@@ -44,6 +46,7 @@ const STORIES_DATA: Record<string, {
     color: "#B8860B",
     bgColor: "#3A3A1A",
     timeAgo: "12m ago",
+    createdAt: Date.now() - 12 * 60 * 1000,
     scripture: "PSALM 23:1",
     content: "Morning devotional from Elder Ruth",
     icon: "sunny-outline",
@@ -54,6 +57,7 @@ const STORIES_DATA: Record<string, {
     color: "#0E7B5B",
     bgColor: "#1A3A2A",
     timeAgo: "45m ago",
+    createdAt: Date.now() - 45 * 60 * 1000,
     scripture: "PHILIPPIANS 4:13",
     content: "Worship team praise moment",
     icon: "musical-notes-outline",
@@ -64,6 +68,7 @@ const STORIES_DATA: Record<string, {
     color: "#8B3A8B",
     bgColor: "#2A1A3A",
     timeAgo: "1h ago",
+    createdAt: Date.now() - 60 * 60 * 1000,
     content: "Choir rehearsal highlight",
     icon: "musical-notes-outline",
   },
@@ -73,6 +78,7 @@ const STORIES_DATA: Record<string, {
     color: "#C85200",
     bgColor: "#3A2010",
     timeAgo: "2h ago",
+    createdAt: Date.now() - 2 * 60 * 60 * 1000,
     content: "Youth Ministry update",
     icon: "leaf-outline",
   },
@@ -89,13 +95,25 @@ export default function StoryScreen() {
   const story = STORIES_DATA[id ?? "pj"] ?? DEFAULT_STORY;
   const [message, setMessage] = useState("");
   const [liked, setLiked] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  // Check if story is expired (older than 24 hours)
   useEffect(() => {
+    const now = Date.now();
+    const age = now - story.createdAt;
+    const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+    if (age > twentyFourHoursMs) {
+      setIsExpired(true);
+      router.back();
+      return;
+    }
+    // Set remaining time for progress bar (8 seconds per story, but max 24 hours)
+    const remainingMs = Math.max(8000, twentyFourHoursMs - age);
     progressAnim.setValue(0);
     const anim = Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 8000,
+      duration: 8000, // Always 8 seconds for viewer experience
       useNativeDriver: false,
     });
     anim.start(({ finished }) => {
@@ -113,6 +131,22 @@ export default function StoryScreen() {
     if (!message.trim()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setMessage("");
+  }
+
+  if (isExpired) {
+    return (
+      <View style={[styles.container, { backgroundColor: "#0A0A0A" }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20 }}>
+          <Ionicons name="time-outline" size={56} color="#636366" style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 8 }}>Story Expired</Text>
+          <Text style={{ fontSize: 14, color: "#8E8E93", textAlign: "center", marginBottom: 20 }}>This story is older than 24 hours and is no longer available.</Text>
+          <TouchableOpacity style={{ backgroundColor: "#3B5BDB", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }} onPress={() => router.back()}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "600" }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (

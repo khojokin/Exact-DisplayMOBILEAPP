@@ -3,14 +3,11 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import FloatingAI from "@/components/FloatingAI";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useAI } from "@/hooks/useAI";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { messageUnreadCount, communityUnreadCount } = useNotifications();
-  const { aiEnabled } = useAI();
   const TAB_BAR_HEIGHT = 50;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -104,9 +101,6 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-
-      {/* Floating AI — sits above tab bar across all screens */}
-      {aiEnabled && <FloatingAI />}
     </View>
   );
 }

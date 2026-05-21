@@ -12,10 +12,16 @@ import {
   Alert,
   Animated,
   Easing,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useOAuth, useSignIn } from "@clerk/clerk-expo";
+import { makeRedirectUri } from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+
+WebBrowser.maybeCompleteAuthSession();
 
 function GoogleIcon() {
   return (
@@ -27,6 +33,9 @@ function GoogleIcon() {
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded, signIn, setActive } = useSignIn();
+  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -59,7 +68,7 @@ export default function SignInScreen() {
           useNativeDriver: true,
         }),
       ]),
-      // 2. Title "erha" slides up
+      // 2. Title slides up
       Animated.parallel([
         Animated.timing(titleOpacity, {
           toValue: 1,
@@ -104,20 +113,54 @@ export default function SignInScreen() {
     ]).start();
   }, []);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!isLoaded) return;
     if (!identifier.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please enter your email/username and password.");
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const result = await signIn.create({
+        identifier: identifier.trim(),
+        password,
+      });
+
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      Alert.alert("Verification Required", "Please complete the remaining sign-in steps.");
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || "Sign in failed. Please try again.";
+      Alert.alert("Sign In Failed", message);
+    } finally {
       setLoading(false);
-      router.replace("/(tabs)");
-    }, 1200);
+    }
   };
 
-  const handleSocial = (provider: string) => {
-    Alert.alert(`${provider} Sign In`, `${provider} authentication coming soon.`);
+  const handleSocial = async (provider: "Google" | "Apple") => {
+    try {
+      const startFlow = provider === "Google" ? startGoogleOAuth : startAppleOAuth;
+      const { createdSessionId, setActive: setOAuthActive, signIn: oauthSignIn, signUp } = await startFlow({
+        redirectUrl: makeRedirectUri({ scheme: "sda-community", path: "oauth-native-callback" }),
+      });
+
+      if (createdSessionId) {
+        await (setOAuthActive ?? setActive)?.({ session: createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      if (oauthSignIn || signUp) {
+        Alert.alert("Verification Required", `Complete ${provider} verification to continue.`);
+      }
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || `${provider} sign in failed.`;
+      Alert.alert(`${provider} Sign In Failed`, message);
+    }
   };
 
   return (
@@ -141,15 +184,15 @@ export default function SignInScreen() {
           {/* ── Animated logo + title ─────────────────────── */}
           <View style={styles.logoSection}>
             <Animated.View style={[styles.logoCircle, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-              <Text style={styles.logoLeaf}>✦</Text>
+              <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
             </Animated.View>
 
             <Animated.Text style={[styles.appName, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}>
-              erha
+              SDA Community
             </Animated.Text>
 
             <Animated.Text style={[styles.tagline, { opacity: taglineOp }]}>
-              Welcome back, beloved
+              Welcome back
             </Animated.Text>
           </View>
 
@@ -255,22 +298,19 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: "#4A674118",
-    borderWidth: 2,
-    borderColor: "#6B7B5A55",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
-  logoLeaf: {
-    fontSize: 38,
-    color: "#6B7B5A",
-  },
+  logoImage: { width: 60, height: 60 },
   appName: {
     color: "#FFFFFF",
-    fontSize: 42,
+    fontSize: 34,
     fontWeight: "800",
-    letterSpacing: -1.5,
+    letterSpacing: -0.8,
     marginBottom: 8,
   },
   tagline: { color: "#8E8E93", fontSize: 15 },

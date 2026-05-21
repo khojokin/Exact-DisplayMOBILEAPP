@@ -220,9 +220,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: "#FFFFFF", fontSize: 15, paddingVertical: 10 },
 
   filtersRow: { marginTop: 10 },
-  filtersContent: { paddingHorizontal: 14, gap: 8, paddingBottom: 10 },
+  filtersContent: { paddingLeft: 14, paddingRight: 22, gap: 8, paddingBottom: 10, alignItems: "center" },
   filterPill: {
-    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
     backgroundColor: "#1C1C1E", borderWidth: StyleSheet.hairlineWidth, borderColor: "#2C2C2E",
   },
   filterPillActive: { backgroundColor: "#4A6741", borderColor: "#6B7B5A" },

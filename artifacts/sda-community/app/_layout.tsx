@@ -5,6 +5,8 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -20,10 +22,21 @@ import { AIProvider } from "@/hooks/useAI";
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+const clerkPublishableKey =
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  "pk_live_Y2xlcmsuc2V2ZW50aGRheWFkdmVudGlzdC5vbmxpbmUk";
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0A0A0A" } }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "#0A0A0A" },
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
+      }}
+    >
       <Stack.Screen name="signin" options={{ headerShown: false }} />
       <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -68,10 +81,6 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
-        name="prayer-wall"
-        options={{ headerShown: false, presentation: "card" }}
-      />
-      <Stack.Screen
         name="devotional"
         options={{ headerShown: false, presentation: "card" }}
       />
@@ -106,17 +115,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
-            <KeyboardProvider>
-              <AIProvider>
-                <NotificationProvider>
-                  <RootLayoutNav />
-                </NotificationProvider>
-              </AIProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
+        <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+              <KeyboardProvider>
+                <AIProvider>
+                  <NotificationProvider>
+                    <RootLayoutNav />
+                  </NotificationProvider>
+                </AIProvider>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </ClerkProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

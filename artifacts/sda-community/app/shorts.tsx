@@ -303,6 +303,10 @@ function UploadModal({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ShortsScreen() {
   const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 50;
+  const bottomNavPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomNavHeight = TAB_BAR_HEIGHT + bottomNavPad;
+  const bottomOverlayOffset = bottomNavHeight;
   const [liked, setLiked] = useState<Record<string, number>>({});
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [showComments, setShowComments] = useState(false);
@@ -402,7 +406,7 @@ export default function ShortsScreen() {
         />
 
         {/* Right sidebar */}
-        <View style={[styles.sidebar, { bottom: insets.bottom + 96 }]}>
+        <View style={[styles.sidebar, { bottom: bottomOverlayOffset + 8 }]}> 
           {/* Creator avatar with follow + */}
           <View style={styles.creatorWrap}>
             <TouchableOpacity
@@ -448,7 +452,7 @@ export default function ShortsScreen() {
         </View>
 
         {/* Bottom info over gradient */}
-        <View style={[styles.bottomOverlay, { paddingBottom: insets.bottom + 90 }]}>
+        <View style={[styles.bottomOverlay, { paddingBottom: bottomOverlayOffset }]}> 
           {/* Creator row */}
           <View style={styles.creatorRow}>
             <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { name: short.creator } })}>
@@ -477,13 +481,9 @@ export default function ShortsScreen() {
           </View>
         </View>
 
-        {/* Thin progress bar */}
-        <View style={[styles.progressBarWrap, { bottom: insets.bottom + 82 }]}>
-          <View style={[styles.progressFill, { width: isPlaying ? "55%" : "0%" }]} />
-        </View>
       </View>
     );
-  }, [liked, followed, playing, extraComments, insets]);
+  }, [liked, followed, playing, extraComments, bottomOverlayOffset]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
@@ -517,11 +517,6 @@ export default function ShortsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* "Shorts" label — bottom-left of top bar */}
-      <View style={[styles.shortsLabel, { top: Platform.OS === "web" ? 52 : insets.top + 2 }]}>
-        <Text style={styles.shortsTitleText}>Shorts</Text>
-      </View>
-
       {/* Feed */}
       <FlatList
         ref={flatRef}
@@ -541,6 +536,35 @@ export default function ShortsScreen() {
         onClose={() => setShowUpload(false)}
         insets={insets}
       />
+
+      {/* Bottom nav (same routes as tab app) */}
+      <View
+        style={[
+          styles.bottomNav,
+          {
+            height: bottomNavHeight,
+            paddingBottom: bottomNavPad,
+          },
+        ]}
+      >
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.replace("/(tabs)")}>
+          <Feather name="home" size={21} color="#636366" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.replace("/(tabs)/community")}>
+          <Ionicons name="people-outline" size={23} color="#636366" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.replace("/(tabs)/new-post")}>
+          <View style={styles.bottomNavPlusWrap}>
+            <Feather name="plus" size={20} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.replace("/(tabs)/messages")}>
+          <Feather name="send" size={21} color="#636366" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.replace("/(tabs)/profile")}>
+          <Ionicons name="person-circle-outline" size={25} color="#636366" />
+        </TouchableOpacity>
+      </View>
 
       {/* Comments bottom sheet */}
       <Modal
@@ -661,17 +685,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
 
-  shortsLabel: {
-    position: "absolute",
-    left: 52,
-    zIndex: 21,
-  },
-  shortsTitleText: {
-    color: "#FFF",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-
   videoBg: {
     flex: 1,
     alignItems: "center",
@@ -749,11 +762,33 @@ const styles = StyleSheet.create({
   audioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   audioName: { color: "rgba(255,255,255,0.85)", fontSize: 12 },
 
-  progressBarWrap: {
-    position: "absolute", left: 0, right: 0,
-    height: 2, backgroundColor: "rgba(255,255,255,0.25)",
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingTop: 4,
+    backgroundColor: "#111111",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#2C2C2E",
   },
-  progressFill: { height: 2, backgroundColor: "#FFF" },
+  bottomNavItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomNavPlusWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#6B7B5A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
 
 // Comments sheet styles

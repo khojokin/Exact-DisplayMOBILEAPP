@@ -10,10 +10,16 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useOAuth, useSignUp } from "@clerk/clerk-expo";
+import { makeRedirectUri } from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+
+WebBrowser.maybeCompleteAuthSession();
 
 function GoogleIcon() {
   return (
@@ -25,6 +31,9 @@ function GoogleIcon() {
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded, signUp, setActive } = useSignUp();
+  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +41,8 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
+    if (!isLoaded) return;
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please fill in all required fields.");
       return;
@@ -41,19 +51,59 @@ export default function SignUpScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
+
+    const [firstName = "", ...rest] = fullName.trim().split(" ");
+    const lastName = rest.join(" ");
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const result = await signUp.create({
+        emailAddress: email.trim(),
+        password,
+        username: username.trim() || undefined,
+        firstName,
+        lastName: lastName || undefined,
+      });
+
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
       Alert.alert(
-        "Account Created!",
-        "Welcome to SDA Community, " + fullName.split(" ")[0] + "!",
-        [{ text: "Sign In", onPress: () => router.replace("/signin") }]
+        "Verify Your Email",
+        "Your account was created. Please complete verification to continue."
       );
-    }, 1400);
+      router.replace("/signin");
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || "Sign up failed. Please try again.";
+      Alert.alert("Sign Up Failed", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSocial = (provider: string) => {
-    Alert.alert(`${provider} Sign Up`, `${provider} authentication coming soon.`);
+  const handleSocial = async (provider: "Google" | "Apple") => {
+    try {
+      const startFlow = provider === "Google" ? startGoogleOAuth : startAppleOAuth;
+      const { createdSessionId, setActive: setOAuthActive, signIn: oauthSignIn, signUp: oauthSignUp } = await startFlow({
+        redirectUrl: makeRedirectUri({ scheme: "sda-community", path: "oauth-native-callback" }),
+      });
+
+      if (createdSessionId) {
+        await (setOAuthActive ?? setActive)?.({ session: createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      if (oauthSignIn || oauthSignUp) {
+        Alert.alert("Verification Required", `Complete ${provider} verification to continue.`);
+      }
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || `${provider} sign up failed.`;
+      Alert.alert(`${provider} Sign Up Failed`, message);
+    }
   };
 
   return (
@@ -82,7 +132,7 @@ export default function SignUpScreen() {
           {/* Logo */}
           <View style={styles.logoSection}>
             <View style={styles.logoCircle}>
-              <Ionicons name="people" size={34} color="#6B7B5A" />
+              <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
             </View>
             <Text style={styles.appName}>Create Account</Text>
             <Text style={styles.tagline}>Join the SDA Community</Text>
@@ -210,13 +260,14 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: "#4A674120",
-    borderWidth: 2,
-    borderColor: "#6B7B5A44",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
+  logoImage: { width: 52, height: 52 },
   appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginBottom: 5 },
   tagline: { color: "#8E8E93", fontSize: 14 },
   socialGroup: { gap: 12, marginBottom: 22 },

@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   Platform,
   StatusBar,
-  Animated,
-  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -20,280 +18,157 @@ const CONTACTS: Record<string, { name: string; initials: string; color: string }
   "3": { name: "SDA Prayer Group", initials: "PG", color: "#4A6741" },
   "4": { name: "David Mensah", initials: "DM", color: "#4A5270" },
   "5": { name: "Grace Adetokunbo", initials: "GA", color: "#0E7B5B" },
+  "erha-ai": { name: "Erha AI", initials: "AI", color: "#6B7B5A" },
 };
 
-function pad(n: number) {
-  return n.toString().padStart(2, "0");
-}
-
 function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${pad(m)}:${pad(s)}`;
+  const mins = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const secs = (seconds % 60).toString().padStart(2, "0");
+  return `${mins}:${secs}`;
 }
 
 export default function CallScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
 
-  const contact = CONTACTS[id ?? "4"] ?? CONTACTS["4"];
-  const isVideo = type === "video";
+  const targetId = id ?? "4";
+  const contact = CONTACTS[targetId] ?? CONTACTS["4"];
+  const isVideoCall = type === "video";
 
-  const [duration, setDuration] = useState(0);
-  const [muted, setMuted] = useState(false);
-  const [speakerOn, setSpeakerOn] = useState(false);
-  const [cameraOn, setCameraOn] = useState(isVideo);
-  const [flipped, setFlipped] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [connecting, setConnecting] = useState(true);
+  const [elapsed, setElapsed] = useState(0);
+  const [micOn, setMicOn] = useState(true);
+  const [speakerOn, setSpeakerOn] = useState(!isVideoCall);
+  const [cameraOn, setCameraOn] = useState(isVideoCall);
 
   useEffect(() => {
-    const interval = setInterval(() => setDuration((d) => d + 1), 1000);
-    return () => clearInterval(interval);
+    const connectTimer = setTimeout(() => setConnecting(false), 1300);
+    return () => clearTimeout(connectTimer);
   }, []);
 
   useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, []);
+    if (connecting) return;
+    const timer = setInterval(() => setElapsed((prev) => prev + 1), 1000);
+    return () => clearInterval(timer);
+  }, [connecting]);
 
-  function handleEnd() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  const subtitle = useMemo(() => {
+    if (connecting) return "Connecting...";
+    return isVideoCall ? `Video call live · ${formatDuration(elapsed)}` : `Voice call live · ${formatDuration(elapsed)}`;
+  }, [connecting, isVideoCall, elapsed]);
+
+  function toggleMic() {
+    Haptics.selectionAsync();
+    setMicOn((prev) => !prev);
+  }
+
+  function toggleSpeaker() {
+    Haptics.selectionAsync();
+    setSpeakerOn((prev) => !prev);
+  }
+
+  function toggleCamera() {
+    Haptics.selectionAsync();
+    setCameraOn((prev) => !prev);
+  }
+
+  function endCall() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.back();
   }
 
-  function handleFlip() {
-    Haptics.selectionAsync();
-    setFlipped((v) => !v);
-  }
-
-  function handleMore() {
-    Haptics.selectionAsync();
-    Alert.alert("Call Options", undefined, [
-      { text: "Add Participant", onPress: () => {} },
-      { text: "Share Screen", onPress: () => {} },
-      { text: "Record Call", onPress: () => {} },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }
-
-  const ControlBtn = ({
-    icon,
-    label,
-    active,
-    onPress,
-    isEnd,
-    iconSet = "ionicons",
-  }: {
-    icon: string;
-    label: string;
-    active?: boolean;
-    onPress: () => void;
-    isEnd?: boolean;
-    iconSet?: "ionicons" | "feather" | "material";
-  }) => (
-    <TouchableOpacity style={styles.controlItem} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.controlCircle, isEnd && styles.controlCircleEnd, active && styles.controlCircleActive]}>
-        {iconSet === "feather" ? (
-          <Feather name={icon as any} size={22} color={isEnd ? "#FFFFFF" : active ? "#FFFFFF" : "#CCCCCC"} />
-        ) : iconSet === "material" ? (
-          <MaterialIcons name={icon as any} size={24} color={isEnd ? "#FFFFFF" : active ? "#FFFFFF" : "#CCCCCC"} />
-        ) : (
-          <Ionicons name={icon as any} size={22} color={isEnd ? "#FFFFFF" : active ? "#FFFFFF" : "#CCCCCC"} />
-        )}
-      </View>
-      <Text style={styles.controlLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
 
-      <View style={styles.callInfo}>
-        <Animated.View style={[styles.avatarWrap, { transform: [{ scale: pulseAnim }] }]}>
-          <View style={[styles.avatarPulseRing, { borderColor: contact.color + "33" }]} />
-          <View style={[styles.avatarCircle, { backgroundColor: contact.color + "66" }]}>
-            <Text style={styles.avatarInitials}>{contact.initials}</Text>
-          </View>
-        </Animated.View>
-
-        <Text style={styles.contactName}>{contact.name}</Text>
-        <Text style={styles.duration}>{formatDuration(duration)}</Text>
-        <View style={styles.callTypeBadge}>
-          <Text style={styles.callTypeText}>SDA {isVideo ? "Video" : "Voice"} Call</Text>
-        </View>
+      <View style={[styles.header, { paddingTop: topPad }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{isVideoCall ? "Video Call" : "Voice Call"}</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {isVideo && cameraOn && (
-        <View style={[styles.ownVideoPreview, flipped && { left: 20, right: undefined }]}>
-          <View style={styles.ownVideoCircle}>
-            <Text style={styles.ownVideoInitials}>MS</Text>
-          </View>
-          {flipped && <Text style={styles.flippedLabel}>Flipped</Text>}
+      <View style={styles.centerWrap}>
+        <View style={[styles.avatar, { backgroundColor: `${contact.color}88` }]}>
+          <Text style={styles.initials}>{contact.initials}</Text>
         </View>
-      )}
+        <Text style={styles.name}>{contact.name}</Text>
+        <Text style={styles.sub}>{subtitle}</Text>
 
-      <View style={[styles.controls, { paddingBottom: bottomPad + 16 }]}>
-        {isVideo && (
-          <View style={styles.controlRow}>
-            <ControlBtn
-              icon="camera-reverse-outline"
-              label="Flip"
-              active={flipped}
-              onPress={handleFlip}
-              iconSet="ionicons"
-            />
-            <ControlBtn
-              icon={cameraOn ? "videocam-outline" : "videocam-off-outline"}
-              label="Camera"
-              active={!cameraOn}
-              onPress={() => { Haptics.selectionAsync(); setCameraOn((v) => !v); }}
-            />
-            <ControlBtn
-              icon={speakerOn ? "volume-high-outline" : "volume-medium-outline"}
-              label="Speaker"
-              active={speakerOn}
-              onPress={() => { Haptics.selectionAsync(); setSpeakerOn((v) => !v); }}
-            />
-          </View>
-        )}
+        <View style={styles.controlsRow}>
+          <TouchableOpacity style={[styles.controlBtn, !micOn && styles.controlBtnOff]} onPress={toggleMic}>
+            <Ionicons name={micOn ? "mic" : "mic-off"} size={20} color="#FFF" />
+          </TouchableOpacity>
 
-        {!isVideo && (
-          <View style={styles.controlRow}>
-            <ControlBtn
-              icon={speakerOn ? "volume-high-outline" : "volume-medium-outline"}
-              label="Speaker"
-              active={speakerOn}
-              onPress={() => { Haptics.selectionAsync(); setSpeakerOn((v) => !v); }}
-            />
-          </View>
-        )}
+          <TouchableOpacity style={[styles.controlBtn, !speakerOn && styles.controlBtnOff]} onPress={toggleSpeaker}>
+            <Ionicons name={speakerOn ? "volume-high" : "volume-mute"} size={20} color="#FFF" />
+          </TouchableOpacity>
 
-        <View style={styles.controlRow}>
-          <ControlBtn
-            icon={muted ? "mic-off-outline" : "mic-outline"}
-            label="Mute"
-            active={muted}
-            onPress={() => { Haptics.selectionAsync(); setMuted((v) => !v); }}
-          />
-          <ControlBtn
-            icon="call"
-            label="End"
-            isEnd
-            onPress={handleEnd}
-          />
-          <ControlBtn
-            icon="ellipsis-horizontal"
-            label="More"
-            onPress={handleMore}
-          />
+          {isVideoCall && (
+            <TouchableOpacity style={[styles.controlBtn, !cameraOn && styles.controlBtnOff]} onPress={toggleCamera}>
+              <Ionicons name={cameraOn ? "videocam" : "videocam-off"} size={20} color="#FFF" />
+            </TouchableOpacity>
+          )}
         </View>
+
+        <TouchableOpacity style={styles.endCallBtn} onPress={endCall}>
+          <Ionicons name="call" size={20} color="#FFF" style={{ transform: [{ rotate: "135deg" }] }} />
+          <Text style={styles.endCallText}>End Call</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#111827",
-    alignItems: "center",
-  },
-  callInfo: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  avatarWrap: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  avatarPulseRing: {
-    position: "absolute",
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    borderWidth: 2,
-  },
-  avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitials: { color: "#FFFFFF", fontSize: 44, fontWeight: "700" },
-  contactName: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", letterSpacing: -0.5 },
-  duration: { color: "#9CA3AF", fontSize: 16 },
-  callTypeBadge: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  callTypeText: { color: "#9CA3AF", fontSize: 13 },
-  ownVideoPreview: {
-    position: "absolute",
-    bottom: 200,
-    right: 20,
-    width: 80,
-    height: 100,
-    borderRadius: 12,
-    backgroundColor: "#1F2937",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#374151",
-    overflow: "hidden",
-  },
-  ownVideoCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#6B7B8A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ownVideoInitials: { color: "#FFF", fontWeight: "700", fontSize: 16 },
-  flippedLabel: { color: "#9CA3AF", fontSize: 9, marginTop: 4 },
-  controls: {
-    width: "100%",
-    paddingHorizontal: 24,
-    gap: 28,
-    paddingTop: 16,
-  },
-  controlRow: {
+  container: { flex: 1, backgroundColor: "#111827" },
+  header: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 36,
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  controlItem: { alignItems: "center", gap: 8 },
-  controlCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255,255,255,0.12)",
+  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "700" },
+  centerWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+  avatar: { width: 108, height: 108, borderRadius: 54, alignItems: "center", justifyContent: "center" },
+  initials: { color: "#FFF", fontSize: 36, fontWeight: "700" },
+  name: { color: "#FFF", fontSize: 26, fontWeight: "700", marginTop: 14 },
+  sub: { color: "#9CA3AF", fontSize: 13, textAlign: "center", lineHeight: 19, marginTop: 8 },
+  controlsRow: {
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 34,
+    marginBottom: 22,
+  },
+  controlBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#1F2937",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#374151",
   },
-  controlCircleEnd: {
-    backgroundColor: "#EF4444",
-    transform: [{ rotate: "135deg" }],
+  controlBtnOff: {
+    backgroundColor: "#3F1D1D",
+    borderColor: "#7F1D1D",
   },
-  controlCircleActive: {
-    backgroundColor: "rgba(255,255,255,0.3)",
+  endCallBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#C62828",
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  controlLabel: { color: "#9CA3AF", fontSize: 12 },
+  endCallText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });

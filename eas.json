@@ -1,15 +1,12 @@
 {
   "cli": {
-    "version": ">= 16.18.0",
+    "version": ">= 19.0.1",
     "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "ios": {
-        "simulator": true
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal"
@@ -19,10 +16,6 @@
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "ascAppId": "6771246499"
-      }
-    }
+    "production": {}
   }
 }

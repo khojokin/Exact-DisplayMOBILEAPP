@@ -16,7 +16,7 @@ import {
   Image,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -59,48 +59,6 @@ const DAILY_VERSES = [
 function getDailyVerse() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
   return DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
-}
-
-const DAILY_HYMNS = [
-  { number: 86, title: "How Great Thou Art", category: "Praise", line: "Then sings my soul, my Savior God, to Thee — How great Thou art!" },
-  { number: 100, title: "Great Is Thy Faithfulness", category: "Assurance", line: "Morning by morning new mercies I see; all I have needed Thy hand hath provided." },
-  { number: 208, title: "Blessed Assurance", category: "Assurance", line: "This is my story, this is my song — praising my Savior all the day long." },
-  { number: 462, title: "Leaning on the Everlasting Arms", category: "Trust", line: "What a fellowship, what a joy divine, leaning on the everlasting arms." },
-  { number: 499, title: "What a Friend We Have in Jesus", category: "Prayer", line: "What a privilege to carry everything to God in prayer!" },
-  { number: 506, title: "A Mighty Fortress Is Our God", category: "Trust", line: "A mighty fortress is our God, a bulwark never failing." },
-  { number: 530, title: "It Is Well with My Soul", category: "Trust", line: "Whatever my lot, Thou hast taught me to say — it is well with my soul." },
-  { number: 590, title: "Turn Your Eyes Upon Jesus", category: "Devotion", line: "Turn your eyes upon Jesus, look full in His wonderful face." },
-  { number: 1, title: "Praise to the Lord, the Almighty", category: "Praise", line: "Praise to the Lord, the Almighty, the King of creation!" },
-  { number: 73, title: "Holy, Holy, Holy", category: "Worship", line: "God in three Persons, blessed Trinity!" },
-  { number: 272, title: "Give Me the Bible", category: "Scripture", line: "Give me the Bible — star of gladness gleaming." },
-  { number: 309, title: "I Surrender All", category: "Devotion", line: "All to Jesus I surrender — all to Him I freely give." },
-  { number: 632, title: "When We All Get to Heaven", category: "Hope", line: "When we all see Jesus, we'll sing and shout the victory!" },
-  { number: 159, title: "The Old Rugged Cross", category: "Calvary", line: "So I'll cherish the old rugged cross, and exchange it someday for a crown." },
-  { number: 483, title: "I Need Thee Every Hour", category: "Prayer", line: "I need Thee, O I need Thee — every hour I need Thee!" },
-];
-
-function getDailyHymn() {
-  const day = Math.floor(Date.now() / 86400000);
-  return DAILY_HYMNS[day % DAILY_HYMNS.length];
-}
-
-function HymnOfTheDayCard() {
-  const hymn = getDailyHymn();
-  return (
-    <TouchableOpacity style={styles.hymnCard} activeOpacity={0.88} onPress={() => router.push("/hymns")}>
-      <View style={styles.hymnCardLeft}>
-        <View style={styles.hymnCardBadge}>
-          <Ionicons name="musical-note" size={11} color="#3B5BDB" />
-          <Text style={styles.hymnCardBadgeText}>HYMN OF THE DAY</Text>
-        </View>
-        <Text style={styles.hymnCardTitle} numberOfLines={1}>#{hymn.number} · {hymn.title}</Text>
-        <Text style={styles.hymnCardLine} numberOfLines={2}>"{hymn.line}"</Text>
-      </View>
-      <View style={[styles.hymnCardIcon, { backgroundColor: "#3B5BDB22" }]}>
-        <Ionicons name="musical-notes-outline" size={22} color="#3B5BDB" />
-      </View>
-    </TouchableOpacity>
-  );
 }
 
 function VerseOfTheDayCard({ onShare }: { onShare: () => void }) {
@@ -148,6 +106,7 @@ interface CommunityPost {
   timeAgo: string;
   content: string;
   hasMedia?: boolean;
+  imageKey?: "banner" | "logo";
   reactions: number;
   comments: number;
   liked: boolean;
@@ -177,6 +136,8 @@ const COMMUNITY_POSTS: CommunityPost[] = [
     timeAgo: "5h ago",
     content:
       "Sabbath Service this week will be held at our main sanctuary at 9:30 AM. We'll be celebrating our 25th church anniversary with a special programme.",
+    hasMedia: true,
+    imageKey: "banner",
     reactions: 92,
     comments: 14,
     liked: false,
@@ -190,6 +151,7 @@ const COMMUNITY_POSTS: CommunityPost[] = [
     content:
       "Rehearsal night with the most talented voices in SDA. We're preparing something special for the anniversary service. God is getting all the glory!",
     hasMedia: true,
+    imageKey: "banner",
     reactions: 95,
     comments: 5,
     liked: true,
@@ -204,6 +166,8 @@ const COMMUNITY_POSTS: CommunityPost[] = [
     timeAgo: "8h ago",
     content:
       "Prayer meeting this Wednesday evening at 7:00 PM. All are welcome to join us in lifting our community and families before God.",
+    hasMedia: true,
+    imageKey: "banner",
     reactions: 67,
     comments: 9,
     liked: false,
@@ -301,7 +265,6 @@ function SuggestedPeopleBanner() {
                 <Text style={styles.personName} numberOfLines={1}>{person.name.split(" ")[0]}</Text>
                 {person.verified && <Ionicons name="checkmark-circle" size={11} color="#3B5BDB" />}
               </View>
-              <Text style={styles.personRole} numberOfLines={1}>{person.role}</Text>
               <TouchableOpacity
                 style={[styles.followBtn, isFollowed && styles.followBtnActive]}
                 onPress={() => {
@@ -314,7 +277,12 @@ function SuggestedPeopleBanner() {
                   });
                 }}
               >
-                <Text style={[styles.followBtnText, isFollowed && styles.followBtnTextActive]}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.9}
+                  style={[styles.followBtnText, isFollowed && styles.followBtnTextActive]}
+                >
                   {isFollowed ? "Following" : "Follow"}
                 </Text>
               </TouchableOpacity>
@@ -411,6 +379,10 @@ function PostCard({
   onMore: (post: CommunityPost) => void;
   isFollowed: boolean;
 }) {
+  const imageSource = post.imageKey === "logo"
+    ? require("@/assets/images/sda-logo.png")
+    : require("@/assets/images/banner.png");
+
   function handleShare() {
     Haptics.selectionAsync();
     Share.share({ message: `Check out this post by ${post.author} on SDA Community:\n\n"${post.content}"` });
@@ -436,11 +408,6 @@ function PostCard({
             <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { name: post.author } })}>
               <Text style={styles.authorName}>{post.author}</Text>
             </TouchableOpacity>
-            {post.role && (
-              <View style={[styles.roleBadge, { backgroundColor: (post.roleColor ?? "#6B7B5A") + "33" }]}>
-                <Text style={[styles.roleText, { color: post.roleColor }]}>{post.role}</Text>
-              </View>
-            )}
             {isFollowed && (
               <View style={styles.followingBadge}>
                 <Text style={styles.followingBadgeText}>Following</Text>
@@ -454,20 +421,19 @@ function PostCard({
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity activeOpacity={0.9} onPress={() => router.push({ pathname: "/post/[id]", params: { id: post.id } })}>
-        <Text style={styles.postContent}>{post.content}</Text>
-      </TouchableOpacity>
-
       {post.hasMedia && (
         <TouchableOpacity
-          style={styles.mediaPlaceholder}
+          style={styles.postImageWrap}
           activeOpacity={0.8}
           onPress={() => router.push({ pathname: "/post/[id]", params: { id: post.id } })}
         >
-          <Ionicons name="image-outline" size={40} color="#3C3C3E" />
-          <Text style={{ color: "#636366", fontSize: 12, marginTop: 6 }}>Tap to view photo</Text>
+          <Image source={imageSource} style={styles.postImage} resizeMode="cover" />
         </TouchableOpacity>
       )}
+
+      <TouchableOpacity activeOpacity={0.9} onPress={() => router.push({ pathname: "/post/[id]", params: { id: post.id } })}>
+        <Text style={styles.postContent}>{post.content}</Text>
+      </TouchableOpacity>
 
       <View style={styles.reactionBar}>
         <TouchableOpacity style={styles.reactionBtn} onPress={() => { Haptics.selectionAsync(); onLike(post.id); }}>
@@ -521,6 +487,7 @@ function PostCard({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string }>();
   const [posts, setPosts] = useState<CommunityPost[]>(COMMUNITY_POSTS);
   const [activeFilter, setActiveFilter] = useState("All");
   const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set());
@@ -528,6 +495,33 @@ export default function HomeScreen() {
   const { unreadCount, addNotification } = useNotifications();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const verseNotifiedRef = useRef(false);
+  const consumedPostedIds = useRef<Set<string>>(new Set());
+
+  const newPostId = Array.isArray(params.newPostId) ? params.newPostId[0] : params.newPostId;
+  const newPostCaption = Array.isArray(params.newPostCaption) ? params.newPostCaption[0] : params.newPostCaption;
+
+  useEffect(() => {
+    if (!newPostId || !newPostCaption) return;
+    if (consumedPostedIds.current.has(newPostId)) return;
+
+    consumedPostedIds.current.add(newPostId);
+    setPosts((prev) => [
+      {
+        id: `u-${newPostId}`,
+        author: "You",
+        timeAgo: "now",
+        content: newPostCaption,
+        hasMedia: true,
+        imageKey: "banner",
+        reactions: 0,
+        comments: 0,
+        liked: false,
+        saved: false,
+        commentsPreview: [],
+      },
+      ...prev,
+    ]);
+  }, [newPostId, newPostCaption]);
 
   // Decide once on mount whether and where to show suggested people
   const suggestConfig = useRef({
@@ -585,8 +579,15 @@ export default function HomeScreen() {
     });
   }
 
-  function handleCameraPress() {
-    router.push({ pathname: "/(tabs)/new-post" });
+  function handleLogoPress() {
+    Haptics.selectionAsync();
+    setActiveFilter("All");
+    setPosts((prev) =>
+      [...prev].sort((a, b) => {
+        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
+        return score(b) - score(a);
+      })
+    );
   }
 
   function handleSendNotification() {
@@ -620,7 +621,7 @@ export default function HomeScreen() {
   const header = (
     <View>
       <View style={[styles.topBar, { paddingTop: topPad }]}>
-        <TouchableOpacity onPress={handleCameraPress} activeOpacity={0.8}>
+        <TouchableOpacity onPress={handleLogoPress} activeOpacity={0.8}>
           <Image
             source={require("@/assets/images/sda-logo.png")}
             style={styles.logoImg}
@@ -663,8 +664,6 @@ export default function HomeScreen() {
         const v = getDailyVerse();
         Share.share({ message: `"${v.text}"\n— ${v.ref}\n\nShared from SDA Community` });
       }} />
-
-      <HymnOfTheDayCard />
     </View>
   );
 
@@ -769,16 +768,18 @@ const styles = StyleSheet.create({
   postHeaderText: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   authorName: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
-  roleBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  roleText: { fontSize: 10, fontWeight: "600" },
   followingBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#3B5BDB22" },
   followingBadgeText: { fontSize: 10, fontWeight: "600", color: "#3B5BDB" },
   timeAgo: { color: "#636366", fontSize: 12, marginTop: 1 },
   moreBtn: { padding: 4 },
   postContent: { color: "#DADADB", fontSize: 14, lineHeight: 20, paddingHorizontal: 14, marginBottom: 10 },
-  mediaPlaceholder: {
-    height: 200, backgroundColor: "#1C1C1E", alignItems: "center", justifyContent: "center", marginBottom: 10,
+  postImageWrap: {
+    height: 210,
+    backgroundColor: "#1C1C1E",
+    marginBottom: 10,
+    overflow: "hidden",
   },
+  postImage: { width: "100%", height: "100%" },
   reactionBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: 6, gap: 4 },
   reactionBtn: { padding: 4, marginRight: 8 },
   reactionCount: { paddingHorizontal: 14, marginBottom: 4 },
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
   suggestBannerTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   suggestScroll: { paddingHorizontal: 14, gap: 10 },
   personCard: {
-    width: 94,
+    width: 102,
     backgroundColor: "#1C1C1E",
     borderRadius: 14,
     padding: 10,
@@ -825,10 +826,14 @@ const styles = StyleSheet.create({
   personAvatarText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
   personNameRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   personName: { color: "#FFF", fontSize: 11, fontWeight: "600", maxWidth: 58 },
-  personRole: { color: "#8E8E93", fontSize: 10 },
   followBtn: {
-    marginTop: 4, backgroundColor: "#4A6741",
-    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10,
+    marginTop: 4,
+    backgroundColor: "#4A6741",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    width: "100%",
+    alignItems: "center",
   },
   followBtnActive: { backgroundColor: "#2C2C2E" },
   followBtnText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
@@ -923,23 +928,4 @@ const styles = StyleSheet.create({
   verseShareBtn: { padding: 4 },
   verseText: { color: "#DADADB", fontSize: 14, lineHeight: 22, fontStyle: "italic", marginBottom: 8 },
   verseRef: { color: "#B8860B", fontSize: 12, fontWeight: "600" },
-  hymnCard: {
-    marginHorizontal: 14,
-    marginTop: 10,
-    marginBottom: 4,
-    backgroundColor: "#0D1020",
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#3B5BDB33",
-  },
-  hymnCardLeft: { flex: 1 },
-  hymnCardBadge: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 },
-  hymnCardBadgeText: { color: "#3B5BDB", fontSize: 10, fontWeight: "700", letterSpacing: 0.8 },
-  hymnCardTitle: { color: "#FFF", fontSize: 13, fontWeight: "700", marginBottom: 4 },
-  hymnCardLine: { color: "#8E8E93", fontSize: 12, lineHeight: 18, fontStyle: "italic" },
-  hymnCardIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

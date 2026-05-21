@@ -26,6 +26,14 @@ interface Message {
 }
 
 const CONVERSATIONS_DATA: Record<string, { name: string; color: string; initials: string; verified?: boolean; online?: boolean; messages: Message[] }> = {
+  "erha-ai": {
+    name: "Erha AI", color: "#6B7B5A", initials: "AI", verified: true, online: true,
+    messages: [
+      { id: "1", text: "Hi, I'm Erha AI in your chats. Ask me anything.", sent: false, time: "now" },
+      { id: "2", text: "Give me today's verse and a short prayer.", sent: true, time: "now", read: true },
+      { id: "3", text: "Verse: Psalm 46:10. Prayer: Lord, guide my steps today and fill me with peace. Amen.", sent: false, time: "now" },
+    ],
+  },
   "1": {
     name: "Pastor James Osei", color: "#3B5BDB", initials: "PJ", verified: true, online: true,
     messages: [
@@ -64,6 +72,11 @@ const CONVERSATIONS_DATA: Record<string, { name: string; color: string; initials
 };
 
 const AUTO_REPLIES: Record<string, string[]> = {
+  "erha-ai": [
+    "I can help with prayers, verses, app navigation, and church reminders.",
+    "Try asking: 'summarize today's devotional' or 'help me write a prayer request'.",
+    "Here for you. Tell me what you need right now.",
+  ],
   "1": ["God is good! 🙏", "Amen, see you Sabbath!", "Blessings to you and your family 💚"],
   "2": ["Indeed, the Lord is faithful!", "Praise God for His word 🙌", "Keep seeking His face, dear one"],
   "3": ["We are with you in prayer 🕊", "The Lord hears our cries!", "Be encouraged, God is near"],
@@ -127,7 +140,7 @@ export default function DMScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const listRef = useRef<FlatList>(null);
 
-  const convo = CONVERSATIONS_DATA[id ?? "4"] ?? CONVERSATIONS_DATA["4"];
+  const convo = CONVERSATIONS_DATA[id ?? "erha-ai"] ?? CONVERSATIONS_DATA["erha-ai"];
   const [messages, setMessages] = useState<Message[]>(convo.messages);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -150,7 +163,7 @@ export default function DMScreen() {
     setTimeout(() => setIsTyping(true), 800);
     setTimeout(() => {
       setIsTyping(false);
-      const replies = AUTO_REPLIES[id ?? "4"] ?? ["God bless you! 🙏"];
+      const replies = AUTO_REPLIES[id ?? "erha-ai"] ?? ["God bless you! 🙏"];
       const reply = replies[Math.floor(Math.random() * replies.length)];
       setMessages((prev) => [
         ...prev,

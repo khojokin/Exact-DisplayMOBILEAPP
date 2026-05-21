@@ -6,11 +6,11 @@ import {
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const FAITH_ITEMS = [
   { id: "hymns", title: "SDA Hymnal", sub: "60+ hymns · Favorites · Hymn of the Day", icon: "musical-notes-outline", color: "#3B5BDB", route: "/hymns" },
   { id: "devotional", title: "Daily Devotional", sub: "Morning readings & reflections", icon: "sunny-outline", color: "#B8860B", route: "/devotional" },
-  { id: "prayer", title: "Prayer Wall", sub: "Community prayer requests", icon: "hand-left-outline", color: "#6B7B5A", route: "/prayer-wall" },
   { id: "directory", title: "Church Directory", sub: "20 members · 9 ministries · 2 branches", icon: "people-outline", color: "#8B3A8B", route: "/church-directory" },
   { id: "bulletin", title: "Church Bulletin", sub: "Announcements, notices & order of service", icon: "newspaper-outline", color: "#C85200", route: "/church-bulletin" },
   { id: "sabbath", title: "Sabbath School", sub: "Q2 2026 Adult Study Guide", icon: "book-outline", color: "#0E7B5B", route: "/sabbath-school" },
@@ -21,12 +21,26 @@ const FAITH_ITEMS = [
 const MEDIA_ITEMS = [
   { id: "podcast", title: "Podcasts", sub: "Sermons, devotionals & more", icon: "headset-outline", color: "#8B3A8B", route: "/podcast" },
   { id: "shorts", title: "Shorts", sub: "Quick faith clips to inspire", icon: "play-circle-outline", color: "#C85200", route: "/shorts" },
-  { id: "meeting", title: "Meetings", sub: "Join or start a video meeting", icon: "videocam-outline", color: "#4A6741", route: "/meeting" },
 ];
 
 export default function ResourcesScreen() {
   const insets = useSafeAreaInsets();
+  const { isAdmin } = useAdmin();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
+
+  const mediaItems = isAdmin
+    ? [
+        ...MEDIA_ITEMS,
+        {
+          id: "meeting",
+          title: "Meetings",
+          sub: "Admin only · Create or join live meetings",
+          icon: "videocam-outline",
+          color: "#4A6741",
+          route: "/meeting",
+        },
+      ]
+    : MEDIA_ITEMS;
 
   return (
     <View style={styles.container}>
@@ -57,11 +71,11 @@ export default function ResourcesScreen() {
             </View>
             <Text style={styles.quickLabel}>Devotional</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickCard} onPress={() => router.push("/prayer-wall" as any)} activeOpacity={0.85}>
-            <View style={[styles.quickIcon, { backgroundColor: "#6B7B5A22" }]}>
-              <Text style={{ fontSize: 20 }}>🙏</Text>
+          <TouchableOpacity style={styles.quickCard} onPress={() => router.push("/church-directory" as any)} activeOpacity={0.85}>
+            <View style={[styles.quickIcon, { backgroundColor: "#8B3A8B22" }]}>
+              <Ionicons name="people" size={22} color="#8B3A8B" />
             </View>
-            <Text style={styles.quickLabel}>Prayer</Text>
+            <Text style={styles.quickLabel}>Directory</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickCard} onPress={() => router.push("/bible" as any)} activeOpacity={0.85}>
             <View style={[styles.quickIcon, { backgroundColor: "#B8860B22" }]}>
@@ -92,7 +106,7 @@ export default function ResourcesScreen() {
 
         <Text style={styles.sectionLabel}>MEDIA & MEETINGS</Text>
         <View style={styles.mediaGrid}>
-          {MEDIA_ITEMS.map((item) => (
+          {mediaItems.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={styles.mediaCard}

@@ -35,7 +35,8 @@ interface Post {
 
 type FeedItem =
   | { type: "post"; data: Post }
-  | { type: "suggested_communities" };
+  | { type: "suggested_communities" }
+  | { type: "verse_of_day" };
 
 const POSTS: Post[] = [
   {
@@ -115,6 +116,13 @@ const POSTS: Post[] = [
 ];
 
 const SORT_OPTIONS = ["Hot", "New", "Top", "Rising"];
+
+// Verse of the Day
+const VERSE_OF_THE_DAY = {
+  ref: "Psalm 46:10",
+  text: "Be still, and know that I am God; I will be exalted among the nations, I will be exalted in the earth!",
+  date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+};
 
 const SUGGESTED_PEOPLE = [
   { id: "sp1", name: "Pastor James Osei", role: "Pastor", color: "#3B5BDB", verified: true },
@@ -221,6 +229,26 @@ function PostCard({ post, onVote, onSave }: { post: Post; onVote: (id: string, v
   );
 }
 
+function VerseOfDayCard() {
+  return (
+    <View style={styles.verseCard}>
+      <View style={styles.verseCertification}>
+        <Ionicons name="book-outline" size={18} color="#3B5BDB" />
+        <Text style={styles.verseLabel}>VERSE OF THE DAY</Text>
+        <Text style={styles.verseDate}>{VERSE_OF_THE_DAY.date}</Text>
+      </View>
+      <Text style={styles.verseReference}>{VERSE_OF_THE_DAY.ref}</Text>
+      <Text style={styles.verseText}>\"{VERSE_OF_THE_DAY.text}\"</Text>
+      <TouchableOpacity style={styles.verseShareBtn} onPress={() => {
+        Haptics.selectionAsync();
+        Share.share({ message: `Verse of the Day: ${VERSE_OF_THE_DAY.ref}\\n\\n\"${VERSE_OF_THE_DAY.text}\"` });
+      }}>
+        <Ionicons name="share-social-outline" size={18} color="#3B5BDB" />
+        <Text style={styles.verseShareText}>Share Verse</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 function SuggestedCommunitiesCard() {
   const [joinedSet, setJoinedSet] = useState<Set<string>>(new Set());
@@ -471,6 +499,7 @@ export default function CommunityScreen() {
           return `${item.type}-${index}`;
         }}
         renderItem={({ item }) => {
+          if (item.type === "verse_of_day") return <VerseOfDayCard />;
           if (item.type === "suggested_communities") return <SuggestedCommunitiesCard />;
           return <PostCard post={item.data} onVote={handleVote} onSave={handleSave} />;
         }}
@@ -839,5 +868,61 @@ const styles = StyleSheet.create({
   separator: {
     height: 6,
     backgroundColor: "#0A0A0A",
+  },
+  verseCard: {
+    marginHorizontal: 12,
+    marginBottom: 16,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#3B5BDB",
+  },
+  verseCertification: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 8,
+  },
+  verseLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8E8E93",
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  verseDate: {
+    fontSize: 12,
+    color: "#636366",
+  },
+  verseReference: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#3B5BDB",
+    marginBottom: 8,
+  },
+  verseText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#FFFFFF",
+    marginBottom: 14,
+    fontStyle: "italic",
+  },
+  verseShareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#3B5BDB20",
+    borderRadius: 8,
+    gap: 8,
+    alignSelf: "flex-start",
+  },
+  verseShareText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#3B5BDB",
   },
 });

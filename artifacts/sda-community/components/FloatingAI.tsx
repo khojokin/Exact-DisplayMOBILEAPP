@@ -70,6 +70,8 @@ export default function FloatingAI() {
   const [typing, setTyping] = useState(false);
   const listRef = useRef<FlatList>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const mountedRef = useRef(true);
+  const pendingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Drag state ────────────────────────────────────────────────────────────
   const { width: SW, height: SH } = Dimensions.get("window");
@@ -149,7 +151,23 @@ export default function FloatingAI() {
     );
     loop.start();
     return () => loop.stop();
+  }, [pulseAnim]);
+
+  React.useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      pendingTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+      pendingTimersRef.current = [];
+    };
   }, []);
+
+  function queueTimer(cb: () => void, ms: number) {
+    const id = setTimeout(() => {
+      if (mountedRef.current) cb();
+      pendingTimersRef.current = pendingTimersRef.current.filter((t) => t !== id);
+    }, ms);
+    pendingTimersRef.current.push(id);
+  }
 
   function send() {
     const text = input.trim();
@@ -158,11 +176,11 @@ export default function FloatingAI() {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);
-    setTimeout(() => {
+    queueTimer(() => {
       const reply: Message = { id: String(Date.now() + 1), role: "ai", text: getAIReply(text) };
       setMessages((prev) => [...prev, reply]);
       setTyping(false);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      queueTimer(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     }, 900);
   }
 
@@ -170,11 +188,11 @@ export default function FloatingAI() {
     const userMsg: Message = { id: String(Date.now()), role: "user", text: prompt };
     setMessages((prev) => [...prev, userMsg]);
     setTyping(true);
-    setTimeout(() => {
+    queueTimer(() => {
       const reply: Message = { id: String(Date.now() + 1), role: "ai", text: getAIReply(prompt) };
       setMessages((prev) => [...prev, reply]);
       setTyping(false);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      queueTimer(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     }, 900);
   }
 

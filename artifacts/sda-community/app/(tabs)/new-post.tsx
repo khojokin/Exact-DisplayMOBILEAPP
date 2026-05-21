@@ -9,6 +9,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Image,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,11 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
 
 const POST_TYPES = [
-  { id: "update", label: "Update", icon: "refresh-cw" as const },
-  { id: "prayer", label: "Prayer Request", icon: "heart" as const },
   { id: "photo", label: "Photo", icon: "image" as const },
-  { id: "video", label: "Video", icon: "video" as const },
-  { id: "audio", label: "Audio", icon: "mic" as const },
 ];
 
 const TAGGABLE = [
@@ -55,8 +52,9 @@ function renderPostText(text: string) {
 
 export default function NewPostScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedType, setSelectedType] = useState("update");
+  const [selectedType, setSelectedType] = useState("photo");
   const [postText, setPostText] = useState("");
+  const [selectedImage, setSelectedImage] = useState(false);
   const [visible, setVisible] = useState(true);
   const [location, setLocation] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -69,12 +67,7 @@ export default function NewPostScreen() {
   const { addNotification } = useNotifications();
   const inputRef = useRef<TextInput>(null);
 
-  const placeholder =
-    selectedType === "prayer" ? "Share your prayer request with SDA..."
-    : selectedType === "photo" ? "Add a caption..."
-    : selectedType === "video" ? "Describe your video..."
-    : selectedType === "audio" ? "Describe your audio message..."
-    : "Share an update with SDA... Use @ to tag people, # for hashtags";
+  const placeholder = "Write a caption...";
 
   function handleTextChange(text: string) {
     setPostText(text);
@@ -111,31 +104,48 @@ export default function NewPostScreen() {
   }
 
   function handlePost() {
-    if (!postText.trim()) {
-      Alert.alert("Empty Post", "Please write something before posting.");
+    if (!selectedImage) {
+      Alert.alert("Add image", "Please upload a photo before posting.");
       return;
     }
+    if (!postText.trim()) {
+      Alert.alert("Add caption", "Please add a caption before posting.");
+      return;
+    }
+    const caption = postText.trim();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addNotification({
       title: "Post published!",
-      body: postText.trim().slice(0, 80) + (postText.length > 80 ? "..." : ""),
-      type: selectedType === "prayer" ? "prayer" : "announcement",
+      body: caption.slice(0, 80) + (caption.length > 80 ? "..." : ""),
+      type: "announcement",
     });
     setPostText("");
-    setSelectedType("update");
+    setSelectedType("photo");
     setLocation("");
-    router.back();
+    setSelectedImage(false);
+    router.replace({
+      pathname: "/(tabs)",
+      params: {
+        newPostId: Date.now().toString(),
+        newPostCaption: caption,
+        newPostImage: "banner",
+      },
+    });
   }
 
   function handleMediaPick(type: "photo" | "video" | "audio") {
     setSelectedType(type);
     Haptics.selectionAsync();
+    if (type !== "photo") {
+      Alert.alert("Photos only", "Home feed posts are image + caption like Instagram.");
+      return;
+    }
     Alert.alert(
-      type === "photo" ? "Add Photo" : type === "video" ? "Add Video" : "Add Audio",
-      "Choose a source",
+      "Upload Photo",
+      "Choose image source",
       [
-        { text: type === "audio" ? "Record Audio" : "Take " + (type === "photo" ? "Photo" : "Video"), onPress: () => {} },
-        { text: "Choose from Library", onPress: () => {} },
+        { text: "Take Photo", onPress: () => setSelectedImage(true) },
+        { text: "Choose from Library", onPress: () => setSelectedImage(true) },
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -276,22 +286,16 @@ export default function NewPostScreen() {
           )}
         </View>
 
-        {selectedType === "photo" && (
+        {(selectedType === "photo" || selectedImage) && (
           <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick("photo")}>
-            <Ionicons name="image-outline" size={40} color="#3C3C3E" />
-            <Text style={styles.mediaPlaceholderText}>Tap to add photo</Text>
-          </TouchableOpacity>
-        )}
-        {selectedType === "video" && (
-          <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick("video")}>
-            <Ionicons name="videocam-outline" size={40} color="#3C3C3E" />
-            <Text style={styles.mediaPlaceholderText}>Tap to add video</Text>
-          </TouchableOpacity>
-        )}
-        {selectedType === "audio" && (
-          <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick("audio")}>
-            <Ionicons name="mic-outline" size={40} color="#3C3C3E" />
-            <Text style={styles.mediaPlaceholderText}>Tap to record audio</Text>
+            {selectedImage ? (
+              <Image source={require("@/assets/images/banner.png")} style={styles.uploadPreview} resizeMode="cover" />
+            ) : (
+              <>
+                <Ionicons name="image-outline" size={40} color="#3C3C3E" />
+                <Text style={styles.mediaPlaceholderText}>Tap to upload photo</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -301,14 +305,6 @@ export default function NewPostScreen() {
           <TouchableOpacity style={styles.mediaActionBtn} onPress={() => handleMediaPick("photo")}>
             <Ionicons name="image-outline" size={22} color={selectedType === "photo" ? "#6B7B5A" : "#8E8E93"} />
             <Text style={[styles.mediaActionText, selectedType === "photo" && { color: "#6B7B5A" }]}>Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.mediaActionBtn} onPress={() => handleMediaPick("video")}>
-            <Ionicons name="videocam-outline" size={22} color={selectedType === "video" ? "#6B7B5A" : "#8E8E93"} />
-            <Text style={[styles.mediaActionText, selectedType === "video" && { color: "#6B7B5A" }]}>Video</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.mediaActionBtn} onPress={() => handleMediaPick("audio")}>
-            <Ionicons name="mic-outline" size={22} color={selectedType === "audio" ? "#6B7B5A" : "#8E8E93"} />
-            <Text style={[styles.mediaActionText, selectedType === "audio" && { color: "#6B7B5A" }]}>Audio</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.visibilityRow} onPress={() => { Haptics.selectionAsync(); setVisible((v) => !v); }}>
@@ -393,6 +389,7 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth, borderColor: "#2C2C2E", borderStyle: "dashed", gap: 8,
   },
+  uploadPreview: { width: "100%", height: "100%", borderRadius: 12 },
   mediaPlaceholderText: { color: "#636366", fontSize: 14 },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#2C2C2E",

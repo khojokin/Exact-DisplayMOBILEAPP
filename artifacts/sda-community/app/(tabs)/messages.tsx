@@ -31,6 +31,7 @@ interface Conversation {
 }
 
 const CONVERSATIONS: Conversation[] = [
+  { id: "erha-ai", name: "Erha AI", lastMessage: "Ask anything about SDA Community or your day", timeAgo: "now", unread: 0, color: "#6B7B5A", online: true, verified: true, typing: false, read: true },
   { id: "1", name: "Pastor James Osei", lastMessage: "God bless you, see you Sabbath!", timeAgo: "2m", unread: 2, color: "#3B5BDB", online: true, verified: true, typing: false, read: false },
   { id: "2", name: "Elder Ruth Nakamura", lastMessage: "Amen! What a beautiful verse", timeAgo: "1h", unread: 0, color: "#B8860B", online: false, verified: true, typing: true, read: true },
   { id: "3", name: "SDA Prayer Group", lastMessage: "We are praying for your mother", timeAgo: "3h", unread: 5, color: "#4A6741", online: true, verified: false, typing: false, read: false },
@@ -41,6 +42,7 @@ const CONVERSATIONS: Conversation[] = [
 ];
 
 const NEW_MSG_PEOPLE = [
+  { id: "erha-ai", name: "Erha AI", color: "#6B7B5A", verified: true },
   { id: "1", name: "Pastor James Osei", color: "#3B5BDB", verified: true },
   { id: "2", name: "Elder Ruth Nakamura", color: "#B8860B", verified: true },
   { id: "4", name: "David Mensah", color: "#C85200", verified: false },
