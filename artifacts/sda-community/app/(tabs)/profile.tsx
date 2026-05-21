@@ -11,10 +11,13 @@ import {
   Share,
   Modal,
   Dimensions,
+  Image,
+  Alert,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -50,6 +53,39 @@ export default function ProfileScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [activeTab, setActiveTab] = useState("grid");
   const [avatarPreview, setAvatarPreview] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  async function handleAvatarBadgePress() {
+    Alert.alert("Profile Photo", "Choose an option", [
+      {
+        text: "Upload Photo",
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) {
+            Alert.alert("Permission needed", "Please allow access to your photo library.");
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) {
+            setProfileImage(result.assets[0].uri);
+          }
+        },
+      },
+      profileImage
+        ? {
+            text: "Remove Photo",
+            style: "destructive",
+            onPress: () => setProfileImage(null),
+          }
+        : null,
+      { text: "Cancel", style: "cancel" },
+    ].filter(Boolean) as any);
+  }
 
   return (
     <View style={styles.container}>
@@ -105,14 +141,18 @@ export default function ProfileScreen() {
 
         <View style={styles.profileHeader}>
           <View style={styles.avatarCol}>
-            {/* Tapping avatar opens Instagram-style preview */}
+            {/* Tapping avatar opens preview; tapping badge opens upload picker */}
             <TouchableOpacity onPress={() => setAvatarPreview(true)} activeOpacity={0.85}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>MS</Text>
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>MS</Text>
+                )}
               </View>
-              <View style={styles.avatarEditBadge}>
+              <TouchableOpacity style={styles.avatarEditBadge} onPress={handleAvatarBadgePress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="add" size={12} color="#FFF" />
-              </View>
+              </TouchableOpacity>
             </TouchableOpacity>
           </View>
 
@@ -268,6 +308,7 @@ const styles = StyleSheet.create({
   },
   sdaBadgeText: { color: "#6B7B5A", fontSize: 10, fontWeight: "700" },
   followedByText: { color: "#8E8E93", fontSize: 12 },
+  avatarImage: { width: "100%", height: "100%", borderRadius: 999 },
   streakRow: { marginTop: 2 },
   streakText: { color: "#8E8E93", fontSize: 12 },
   actionRow: {

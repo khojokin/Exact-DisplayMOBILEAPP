@@ -212,12 +212,7 @@ export default function SearchScreen() {
       </View>
 
       {/* Filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.tabsRow}
-        contentContainerStyle={s.tabsContent}
-      >
+      <View style={s.tabsRow}>
         {TABS.map((tab) => (
           <TouchableOpacity
             key={tab}
@@ -227,7 +222,7 @@ export default function SearchScreen() {
             <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Results */}
       <ScrollView
@@ -335,13 +330,24 @@ const s = StyleSheet.create({
   },
   searchInput: { flex: 1, color: "#FFF", fontSize: 15, paddingVertical: 10 },
 
-  tabsRow: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#2C2C2E" },
-  tabsContent: { paddingHorizontal: 14, gap: 8, paddingVertical: 10 },
+  tabsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#2C2C2E",
+    backgroundColor: "#0A0A0A",
+  },
   tab: {
-    paddingHorizontal: 16, paddingVertical: 6,
+    flex: 1,
+    paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: "#1C1C1E",
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#2C2C2E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+    alignItems: "center",
+    justifyContent: "center",
   },
   tabActive: { backgroundColor: "#4A6741", borderColor: "#6B7B5A" },
   tabText: { color: "#8E8E93", fontSize: 13, fontWeight: "600" },

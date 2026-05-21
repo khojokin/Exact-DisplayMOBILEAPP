@@ -184,7 +184,6 @@ const SUGGESTED_PEOPLE = [
   { id: "sp5", name: "Naomi Asante", role: "Youth Leader", color: "#0E7B5B", verified: false },
 ];
 
-const FILTERS = ["All", "Announcements", "Prayer", "Photos"];
 
 const AVATAR_COLORS: Record<string, string> = {
   "Pastor James Osei": "#3B5BDB",
@@ -489,7 +488,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string }>();
   const [posts, setPosts] = useState<CommunityPost[]>(COMMUNITY_POSTS);
-  const [activeFilter, setActiveFilter] = useState("All");
   const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set());
   const [sheetPost, setSheetPost] = useState<CommunityPost | null>(null);
   const { unreadCount, addNotification } = useNotifications();
@@ -581,7 +579,6 @@ export default function HomeScreen() {
 
   function handleLogoPress() {
     Haptics.selectionAsync();
-    setActiveFilter("All");
     setPosts((prev) =>
       [...prev].sort((a, b) => {
         const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
@@ -598,25 +595,15 @@ export default function HomeScreen() {
     });
   }
 
-  const filteredPosts = activeFilter === "All"
-    ? posts
-    : activeFilter === "Announcements"
-    ? posts.filter((p) => p.role === "Pastor" || p.role === "Elder")
-    : activeFilter === "Prayer"
-    ? posts.filter((p) => p.content.toLowerCase().includes("prayer") || p.content.toLowerCase().includes("pray"))
-    : activeFilter === "Photos"
-    ? posts.filter((p) => p.hasMedia)
-    : posts;
-
   // Build mixed feed: posts + optional suggested people card
   const feedItems = useMemo<FeedItem[]>(() => {
-    const items: FeedItem[] = filteredPosts.map((p) => ({ type: "post", data: p }));
+    const items: FeedItem[] = posts.map((p) => ({ type: "post", data: p }));
     if (suggestConfig.current.show && items.length > 0) {
       const pos = Math.min(suggestConfig.current.insertAfter, items.length);
       items.splice(pos, 0, { type: "suggested_people" });
     }
     return items;
-  }, [filteredPosts]);
+  }, [posts]);
 
   const header = (
     <View>
@@ -652,18 +639,6 @@ export default function HomeScreen() {
         {STORIES.map((s) => <StoryCircle key={s.id} story={s} />)}
       </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterContent}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity key={f} style={[styles.filterPill, activeFilter === f && styles.filterPillActive]} onPress={() => { Haptics.selectionAsync(); setActiveFilter(f); }}>
-            <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <VerseOfTheDayCard onShare={() => {
-        const v = getDailyVerse();
-        Share.share({ message: `"${v.text}"\n— ${v.ref}\n\nShared from SDA Community` });
-      }} />
     </View>
   );
 
