@@ -15,11 +15,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useOAuth, useSignUp } from "@clerk/clerk-expo";
-import { makeRedirectUri } from "expo-auth-session";
-import * as WebBrowser from "expo-web-browser";
-
-WebBrowser.maybeCompleteAuthSession();
 
 function GoogleIcon() {
   return (
@@ -31,9 +26,6 @@ function GoogleIcon() {
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -41,8 +33,7 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async () => {
-    if (!isLoaded) return;
+  const handleSignUp = () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please fill in all required fields.");
       return;
@@ -51,59 +42,11 @@ export default function SignUpScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
-
-    const [firstName = "", ...rest] = fullName.trim().split(" ");
-    const lastName = rest.join(" ");
-
-    setLoading(true);
-    try {
-      const result = await signUp.create({
-        emailAddress: email.trim(),
-        password,
-        username: username.trim() || undefined,
-        firstName,
-        lastName: lastName || undefined,
-      });
-
-      if (result.status === "complete") {
-        await setActive?.({ session: result.createdSessionId });
-        router.replace("/(tabs)");
-        return;
-      }
-
-      Alert.alert(
-        "Verify Your Email",
-        "Your account was created. Please complete verification to continue."
-      );
-      router.replace("/signin");
-    } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || "Sign up failed. Please try again.";
-      Alert.alert("Sign Up Failed", message);
-    } finally {
-      setLoading(false);
-    }
+    router.replace("/(tabs)");
   };
 
-  const handleSocial = async (provider: "Google" | "Apple") => {
-    try {
-      const startFlow = provider === "Google" ? startGoogleOAuth : startAppleOAuth;
-      const { createdSessionId, setActive: setOAuthActive, signIn: oauthSignIn, signUp: oauthSignUp } = await startFlow({
-        redirectUrl: makeRedirectUri({ scheme: "sda-community", path: "oauth-native-callback" }),
-      });
-
-      if (createdSessionId) {
-        await (setOAuthActive ?? setActive)?.({ session: createdSessionId });
-        router.replace("/(tabs)");
-        return;
-      }
-
-      if (oauthSignIn || oauthSignUp) {
-        Alert.alert("Verification Required", `Complete ${provider} verification to continue.`);
-      }
-    } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || `${provider} sign up failed.`;
-      Alert.alert(`${provider} Sign Up Failed`, message);
-    }
+  const handleSocial = (_provider: "Google" | "Apple") => {
+    router.replace("/(tabs)");
   };
 
   return (

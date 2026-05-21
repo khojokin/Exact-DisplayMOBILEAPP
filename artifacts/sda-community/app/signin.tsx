@@ -17,11 +17,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useOAuth, useSignIn } from "@clerk/clerk-expo";
-import { makeRedirectUri } from "expo-auth-session";
-import * as WebBrowser from "expo-web-browser";
-
-WebBrowser.maybeCompleteAuthSession();
 
 function GoogleIcon() {
   return (
@@ -33,9 +28,6 @@ function GoogleIcon() {
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signIn, setActive } = useSignIn();
-  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -113,54 +105,16 @@ export default function SignInScreen() {
     ]).start();
   }, []);
 
-  const handleSignIn = async () => {
-    if (!isLoaded) return;
+  const handleSignIn = () => {
     if (!identifier.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please enter your email/username and password.");
       return;
     }
-    setLoading(true);
-    try {
-      const result = await signIn.create({
-        identifier: identifier.trim(),
-        password,
-      });
-
-      if (result.status === "complete") {
-        await setActive?.({ session: result.createdSessionId });
-        router.replace("/(tabs)");
-        return;
-      }
-
-      Alert.alert("Verification Required", "Please complete the remaining sign-in steps.");
-    } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || "Sign in failed. Please try again.";
-      Alert.alert("Sign In Failed", message);
-    } finally {
-      setLoading(false);
-    }
+    router.replace("/(tabs)");
   };
 
-  const handleSocial = async (provider: "Google" | "Apple") => {
-    try {
-      const startFlow = provider === "Google" ? startGoogleOAuth : startAppleOAuth;
-      const { createdSessionId, setActive: setOAuthActive, signIn: oauthSignIn, signUp } = await startFlow({
-        redirectUrl: makeRedirectUri({ scheme: "sda-community", path: "oauth-native-callback" }),
-      });
-
-      if (createdSessionId) {
-        await (setOAuthActive ?? setActive)?.({ session: createdSessionId });
-        router.replace("/(tabs)");
-        return;
-      }
-
-      if (oauthSignIn || signUp) {
-        Alert.alert("Verification Required", `Complete ${provider} verification to continue.`);
-      }
-    } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || `${provider} sign in failed.`;
-      Alert.alert(`${provider} Sign In Failed`, message);
-    }
+  const handleSocial = (_provider: "Google" | "Apple") => {
+    router.replace("/(tabs)");
   };
 
   return (
