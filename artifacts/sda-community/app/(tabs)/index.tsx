@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useVideoPosts } from "@/hooks/useVideoPosts";
+import { useTheme } from "@/hooks/useTheme";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -557,6 +558,7 @@ function PostCard({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTheme();
   const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string; newPostType?: string }>();
   const [posts, setPosts] = useState<CommunityPost[]>(COMMUNITY_POSTS);
   const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set());
@@ -808,8 +810,8 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
 
       <PostActionsSheet
         visible={sheetPost !== null}

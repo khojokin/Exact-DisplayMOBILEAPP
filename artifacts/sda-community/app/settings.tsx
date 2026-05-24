@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useAI } from "@/hooks/useAI";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useTheme } from "@/hooks/useTheme";
 
 interface SettingItem {
   id: string;
@@ -31,7 +32,7 @@ export default function SettingsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 120 : insets.bottom + 80;
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
+  const { isDark, toggle: toggleTheme, t } = useTheme();
   const { aiEnabled, setAiEnabled } = useAI();
   const { isPremium, privacyMode, readReceipts, setPrivacyMode, setReadReceipts } = useSubscription();
 
@@ -47,7 +48,7 @@ export default function SettingsScreen() {
     {
       title: "Preferences",
       data: [
-        { id: "appearance", label: "Dark Mode", icon: "color-palette-outline", iconColor: "#8B3A8B", type: "toggle", defaultOn: darkMode },
+        { id: "appearance", label: "Dark Mode", icon: "color-palette-outline", iconColor: "#8B3A8B", type: "toggle", defaultOn: isDark },
         { id: "ai", label: "AI Assistant", icon: "sparkles-outline", iconColor: "#6264A7", type: "toggle", defaultOn: aiEnabled },
         { id: "privacyMode", label: "Privacy Mode", icon: "shield-checkmark-outline", iconColor: "#3B5BDB", type: "toggle", defaultOn: privacyMode },
         { id: "readReceipts", label: "Read Receipts", icon: "mail-open-outline", iconColor: "#D4AF37", type: "toggle", defaultOn: readReceipts },
@@ -132,13 +133,13 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
-      <View style={[styles.header, { paddingTop: topPad }]}>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
+      <View style={[styles.header, { paddingTop: topPad, borderBottomColor: t.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={24} color={t.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -146,7 +147,7 @@ export default function SettingsScreen() {
         sections={SETTINGS_SECTIONS}
         keyExtractor={(item) => item.id}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
+          <Text style={[styles.sectionHeader, { color: t.sectionHeader }]}>{section.title}</Text>
         )}
         renderItem={({ item, index, section }) => {
           const isFirst = index === 0;
@@ -159,6 +160,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[
                 styles.settingItem,
+                { backgroundColor: t.bgSecondary, borderBottomColor: t.border },
                 isFirst && styles.settingItemFirst,
                 isLast && styles.settingItemLast,
                 !isLast && styles.settingItemBorder,
@@ -169,7 +171,7 @@ export default function SettingsScreen() {
               <View style={[styles.iconWrap, { backgroundColor: item.iconColor + "22" }]}>
                 <Ionicons name={item.icon as any} size={18} color={item.iconColor} />
               </View>
-              <Text style={[styles.settingLabel, isDanger && { color: "#FF453A" }]}>{item.label}</Text>
+              <Text style={[styles.settingLabel, { color: isDanger ? t.danger : t.text }]}>{item.label}</Text>
               {isToggle ? (
                 isPremiumLocked ? (
                   <View style={styles.lockWrap}>
@@ -179,15 +181,11 @@ export default function SettingsScreen() {
                 ) : (
                   <Switch
                     value={
-                      item.id === "notifications"
-                        ? pushEnabled
-                        : item.id === "ai"
-                        ? aiEnabled
-                        : item.id === "privacyMode"
-                        ? privacyMode
-                        : item.id === "readReceipts"
-                        ? readReceipts
-                        : darkMode
+                      item.id === "notifications" ? pushEnabled
+                        : item.id === "ai" ? aiEnabled
+                        : item.id === "privacyMode" ? privacyMode
+                        : item.id === "readReceipts" ? readReceipts
+                        : isDark
                     }
                     onValueChange={(v) => {
                       Haptics.selectionAsync();
@@ -195,16 +193,16 @@ export default function SettingsScreen() {
                       else if (item.id === "ai") setAiEnabled(v);
                       else if (item.id === "privacyMode") setPrivacyMode(v);
                       else if (item.id === "readReceipts") setReadReceipts(v);
-                      else setDarkMode(v);
+                      else toggleTheme();
                     }}
-                    trackColor={{ false: "#3C3C3E", true: "#6B7B5A" }}
+                    trackColor={{ false: t.borderLight, true: t.accent }}
                     thumbColor="#FFFFFF"
                   />
                 )
               ) : isDanger ? (
-                <Ionicons name="log-out-outline" size={18} color="#FF453A" />
+                <Ionicons name="log-out-outline" size={18} color={t.danger} />
               ) : (
-                <Feather name="chevron-right" size={18} color="#636366" />
+                <Feather name="chevron-right" size={18} color={t.mutedText} />
               )}
             </TouchableOpacity>
           );

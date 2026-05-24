@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useTheme } from "@/hooks/useTheme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -58,15 +59,16 @@ export default function ProfileScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const isPremium = plan === "premium";
+  const { t } = useTheme();
   const theme = {
-    background: "#0A0A0A",
-    card: "#1C1C1E",
-    text: "#FFFFFF",
-    subtext: "#8E8E93",
-    border: "#3C3C3E",
-    accent: "#4A6741",
+    background: t.bg,
+    card: t.card,
+    text: t.text,
+    subtext: t.subtext,
+    border: t.border,
+    accent: t.accent,
   };
-  const avatarBorderColor = "#6B7B5A";
+  const avatarBorderColor = t.accent;
 
   async function handleAvatarBadgePress() {
     Alert.alert("Profile Photo", "Choose an option", [
@@ -102,7 +104,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}> 
-      <StatusBar barStyle="light-content" backgroundColor={theme.background} />
+      <StatusBar barStyle={t.statusBar} backgroundColor={theme.background} />
 
       {/* Instagram-style avatar full-screen preview modal */}
       <Modal

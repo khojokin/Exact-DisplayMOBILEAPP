@@ -4,25 +4,27 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { messageUnreadCount, communityUnreadCount } = useNotifications();
+  const { t } = useTheme();
   const TAB_BAR_HEIGHT = 50;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: "#FFFFFF",
-          tabBarInactiveTintColor: "#636366",
+          tabBarActiveTintColor: t.text,
+          tabBarInactiveTintColor: t.mutedText,
           headerShown: false,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: "#111111",
+            backgroundColor: t.tabBar,
             borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: "#2C2C2E",
+            borderTopColor: t.tabBorder,
             height: TAB_BAR_HEIGHT + bottomPad,
             paddingBottom: bottomPad,
             paddingTop: 4,

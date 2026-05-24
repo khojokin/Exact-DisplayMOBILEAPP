@@ -16,6 +16,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Message {
   id: string;
@@ -86,20 +87,20 @@ const AUTO_REPLIES: Record<string, string[]> = {
   "4": ["Yes! God is getting all the glory 🎶", "See you at rehearsal!", "Blessed to be part of this community"],
 };
 
-function AvatarCircle({ initials, color, size = 32, online = false }: { initials: string; color: string; size?: number; online?: boolean }) {
+function AvatarCircle({ initials, color, size = 32, online = false, borderColor }: { initials: string; color: string; size?: number; online?: boolean; borderColor?: string }) {
   return (
     <View style={{ position: "relative" }}>
       <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: "#FFF", fontWeight: "700", fontSize: size * 0.36 }}>{initials}</Text>
       </View>
       {online && (
-        <View style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: "#34C759", borderWidth: 1.5, borderColor: "#0A0A0A" }} />
+        <View style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: "#34C759", borderWidth: 1.5, borderColor: borderColor ?? "#0A0A0A" }} />
       )}
     </View>
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ bubbleBg }: { bubbleBg: string }) {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -109,8 +110,8 @@ function TypingIndicator() {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(dot, { toValue: -6, duration: 250, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: -5, duration: 220, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 220, useNativeDriver: true }),
           Animated.delay(500 - delay),
         ])
       ).start();
@@ -120,28 +121,23 @@ function TypingIndicator() {
   }, []);
 
   return (
-    <View style={typing.row}>
-      <View style={typing.bubble}>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", paddingLeft: 44, paddingVertical: 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: bubbleBg, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 }}>
         {[dot1, dot2, dot3].map((dot, i) => (
-          <Animated.View key={i} style={[typing.dot, { transform: [{ translateY: dot }] }]} />
+          <Animated.View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#636366", transform: [{ translateY: dot }] }} />
         ))}
       </View>
     </View>
   );
 }
 
-const typing = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "flex-end", gap: 6, marginVertical: 4, paddingLeft: 12 },
-  bubble: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#1C1C1E", borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12 },
-  dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#636366" },
-});
-
 export default function DMScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 8 : insets.bottom;
   const listRef = useRef<FlatList>(null);
+  const { t } = useTheme();
 
   const convo = CONVERSATIONS_DATA[id ?? "erha-ai"] ?? CONVERSATIONS_DATA["erha-ai"];
   const [messages, setMessages] = useState<Message[]>(convo.messages);
@@ -150,10 +146,8 @@ export default function DMScreen() {
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
-  const replyToMessage = replyToId ? messages.find((message) => message.id === replyToId) ?? null : null;
-  const editingMessage = editingMessageId
-    ? messages.find((message) => message.id === editingMessageId) ?? null
-    : null;
+  const replyToMessage = replyToId ? messages.find((m) => m.id === replyToId) ?? null : null;
+  const editingMessage = editingMessageId ? messages.find((m) => m.id === editingMessageId) ?? null : null;
 
   function canEditMessage(message: Message) {
     if (!message.sent || !message.sentAt) return false;
@@ -173,70 +167,36 @@ export default function DMScreen() {
       ]);
       return;
     }
-
-    const options = [
+    Alert.alert("Message", undefined, [
       { text: "Reply", onPress: () => setReplyToId(message.id) },
       ...(canEditMessage(message)
-        ? [
-            {
-              text: `Edit (${getEditWindowLeft(message)}s left)`,
-              onPress: () => {
-                setEditingMessageId(message.id);
-                setInputText(message.text);
-              },
-            },
-          ]
+        ? [{ text: `Edit (${getEditWindowLeft(message)}s left)`, onPress: () => { setEditingMessageId(message.id); setInputText(message.text); } }]
         : []),
-      {
-        text: "Delete",
-        style: "destructive" as const,
-        onPress: () => {
-          setMessages((prev) => prev.filter((item) => item.id !== message.id));
-          if (replyToId === message.id) setReplyToId(null);
-          if (editingMessageId === message.id) {
-            setEditingMessageId(null);
-            setInputText("");
-          }
-        },
-      },
+      { text: "Delete", style: "destructive" as const, onPress: () => {
+        setMessages((prev) => prev.filter((item) => item.id !== message.id));
+        if (replyToId === message.id) setReplyToId(null);
+        if (editingMessageId === message.id) { setEditingMessageId(null); setInputText(""); }
+      }},
       { text: "Cancel", style: "cancel" as const },
-    ];
-
-    Alert.alert("Message", undefined, options);
+    ]);
   }
 
   function handleSend() {
     if (!inputText.trim()) return;
 
     if (editingMessageId) {
-      const editTarget = messages.find((message) => message.id === editingMessageId);
-      if (!editTarget) {
+      const editTarget = messages.find((m) => m.id === editingMessageId);
+      if (!editTarget || !canEditMessage(editTarget)) {
+        Alert.alert("Edit expired", "You can only edit a message within 1 minute.");
         setEditingMessageId(null);
         setInputText("");
         return;
       }
-      if (!canEditMessage(editTarget)) {
-        Alert.alert("Edit expired", "You can only edit a sent message within 1 minute.");
-        setEditingMessageId(null);
-        setInputText("");
-        return;
-      }
-
-      setMessages((prev) =>
-        prev.map((message) =>
-          message.id === editingMessageId
-            ? {
-                ...message,
-                text: inputText.trim(),
-                editedAt: Date.now(),
-                time: `${new Date().toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })} · edited`,
-              }
-            : message
-        )
-      );
+      setMessages((prev) => prev.map((m) =>
+        m.id === editingMessageId
+          ? { ...m, text: inputText.trim(), editedAt: Date.now(), time: `${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · edited` }
+          : m
+      ));
       setEditingMessageId(null);
       setInputText("");
       Haptics.selectionAsync();
@@ -256,9 +216,8 @@ export default function DMScreen() {
     setInputText("");
     setReplyToId(null);
     Haptics.selectionAsync();
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
 
-    // Simulate typing indicator then auto-reply
     setTimeout(() => setIsTyping(true), 800);
     setTimeout(() => {
       setIsTyping(false);
@@ -266,46 +225,36 @@ export default function DMScreen() {
       const reply = replies[Math.floor(Math.random() * replies.length)];
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now().toString(),
-          text: reply,
-          sent: false,
-          time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        },
+        { id: Date.now().toString(), text: reply, sent: false, time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
       ]);
-      // Mark sent message as read after reply
       setMessages((prev) => prev.map((m) => m.sent ? { ...m, read: true } : m));
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
     }, 2500);
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
-      <View style={[styles.header, { paddingTop: topPad }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="chevron-left" size={24} color="#FFFFFF" />
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+      <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
+
+      {/* Header */}
+      <View style={[{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border, gap: 8, paddingTop: topPad, backgroundColor: t.bg }]}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+          <Feather name="chevron-left" size={24} color={t.text} />
         </TouchableOpacity>
-        <AvatarCircle initials={convo.initials} color={convo.color} size={34} online={convo.online} />
-        <View style={styles.headerInfo}>
+        <AvatarCircle initials={convo.initials} color={convo.color} size={34} online={convo.online} borderColor={t.bg} />
+        <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Text style={styles.headerName}>{convo.name}</Text>
+            <Text style={{ color: t.text, fontSize: 15, fontWeight: "600" }}>{convo.name}</Text>
             {convo.verified && <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />}
           </View>
-          <Text style={styles.headerStatus}>{convo.online ? "Active now" : "Offline"}</Text>
+          <Text style={{ color: "#34C759", fontSize: 11, marginTop: 1 }}>{convo.online ? "Active now" : "Offline"}</Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.callBtn}
-            onPress={() => router.push({ pathname: "/call/[id]", params: { id: id ?? "4", type: "audio" } })}
-          >
-            <Ionicons name="call-outline" size={22} color="#FFFFFF" />
+        <View style={{ flexDirection: "row", gap: 2 }}>
+          <TouchableOpacity style={{ padding: 8 }} onPress={() => router.push({ pathname: "/call/[id]", params: { id: id ?? "4", type: "audio" } })}>
+            <Ionicons name="call-outline" size={22} color={t.text} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.callBtn}
-            onPress={() => router.push({ pathname: "/call/[id]", params: { id: id ?? "4", type: "video" } })}
-          >
-            <Ionicons name="videocam-outline" size={22} color="#FFFFFF" />
+          <TouchableOpacity style={{ padding: 8 }} onPress={() => router.push({ pathname: "/call/[id]", params: { id: id ?? "4", type: "video" } })}>
+            <Ionicons name="videocam-outline" size={22} color={t.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -319,93 +268,103 @@ export default function DMScreen() {
           ref={listRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          style={styles.messageList}
-          contentContainerStyle={styles.messageListContent}
+          style={{ flex: 1, backgroundColor: t.bg }}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6 }}
           renderItem={({ item, index }) => {
             const showAvatar = !item.sent && (index === 0 || messages[index - 1]?.sent);
             const isLast = index === messages.length - 1;
-            const repliedMessage = item.replyToId
-              ? messages.find((message) => message.id === item.replyToId)
-              : null;
+            const repliedMessage = item.replyToId ? messages.find((m) => m.id === item.replyToId) : null;
+
             return (
-              <View style={[styles.messageRow, item.sent && styles.messageRowSent]}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-end",
+                  marginBottom: 3,
+                  justifyContent: item.sent ? "flex-end" : "flex-start",
+                }}
+              >
+                {/* Received: avatar slot */}
                 {!item.sent && (
-                  <View style={styles.avatarSlot}>
+                  <View style={{ width: 28, marginRight: 6, alignSelf: "flex-end" }}>
                     {showAvatar ? (
-                      <AvatarCircle initials={convo.initials} color={convo.color} size={28} />
-                    ) : (
-                      <View style={{ width: 28 }} />
-                    )}
+                      <AvatarCircle initials={convo.initials} color={convo.color} size={28} borderColor={t.bg} />
+                    ) : null}
                   </View>
                 )}
-                <View>
+
+                {/* Bubble container — bounded so text wraps */}
+                <View style={{ maxWidth: "72%", alignItems: item.sent ? "flex-end" : "flex-start" }}>
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onLongPress={() => openMessageActions(item)}
-                    style={[styles.bubble, item.sent ? styles.bubbleSent : styles.bubbleReceived]}
+                    style={{
+                      backgroundColor: item.sent ? t.bubbleSent : t.bubbleReceived,
+                      borderRadius: 18,
+                      borderBottomRightRadius: item.sent ? 4 : 18,
+                      borderBottomLeftRadius: item.sent ? 18 : 4,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                    }}
                   >
                     {repliedMessage && (
-                      <View style={styles.replyPreview}>
-                        <Text style={styles.replyPreviewAuthor} numberOfLines={1}>
+                      <View style={{ borderLeftWidth: 2, borderLeftColor: "rgba(255,255,255,0.35)", paddingLeft: 8, marginBottom: 5 }}>
+                        <Text style={{ color: item.sent ? "rgba(255,255,255,0.8)" : t.subtext, fontSize: 11, fontWeight: "700" }} numberOfLines={1}>
                           {repliedMessage.sent ? "You" : convo.name}
                         </Text>
-                        <Text style={styles.replyPreviewText} numberOfLines={1}>{repliedMessage.text}</Text>
+                        <Text style={{ color: item.sent ? "rgba(255,255,255,0.65)" : t.mutedText, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+                          {repliedMessage.text}
+                        </Text>
                       </View>
                     )}
-                    <Text style={[styles.bubbleText, item.sent && styles.bubbleTextSent]}>{item.text}</Text>
+                    <Text style={{ color: item.sent ? t.bubbleTextSent : t.bubbleTextReceived, fontSize: 15, lineHeight: 20 }}>
+                      {item.text}
+                    </Text>
                   </TouchableOpacity>
-                  {/* Blue ticks on sent messages */}
-                  {item.sent && isLast && (
-                    <View style={styles.readRow}>
-                      <Ionicons
-                        name="checkmark-done"
-                        size={13}
-                        color="#111111"
-                      />
+
+                  {/* Timestamp + read receipt */}
+                  {isLast && item.sent && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 3, paddingRight: 2 }}>
+                      <Text style={{ color: t.mutedText, fontSize: 10 }}>{item.time}</Text>
+                      <Ionicons name="checkmark-done" size={13} color={item.read ? "#4A8A5D" : t.mutedText} />
                     </View>
                   )}
                 </View>
               </View>
             );
           }}
-          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+          ListFooterComponent={isTyping ? <TypingIndicator bubbleBg={t.bubbleReceived} /> : null}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           showsVerticalScrollIndicator={false}
         />
 
+        {/* Reply / Edit banner */}
         {(replyToMessage || editingMessage) && (
-          <View style={styles.composerNoticeRow}>
-            <View style={styles.composerNoticeBar} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6, backgroundColor: t.bg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }}>
+            <View style={{ width: 3, height: 30, borderRadius: 2, backgroundColor: t.accent }} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.composerNoticeTitle}>
-                {editingMessage
-                  ? `Editing message (${getEditWindowLeft(editingMessage)}s left)`
-                  : `Replying to ${replyToMessage?.sent ? "You" : convo.name}`}
+              <Text style={{ color: t.text, fontSize: 12, fontWeight: "600" }}>
+                {editingMessage ? `Editing (${getEditWindowLeft(editingMessage)}s left)` : `Replying to ${replyToMessage?.sent ? "You" : convo.name}`}
               </Text>
-              <Text style={styles.composerNoticeText} numberOfLines={1}>
+              <Text style={{ color: t.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                 {editingMessage ? editingMessage.text : replyToMessage?.text}
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                setReplyToId(null);
-                setEditingMessageId(null);
-                setInputText("");
-              }}
-            >
-              <Ionicons name="close" size={18} color="#8E8E93" />
+            <TouchableOpacity onPress={() => { setReplyToId(null); setEditingMessageId(null); setInputText(""); }}>
+              <Ionicons name="close" size={18} color={t.subtext} />
             </TouchableOpacity>
           </View>
         )}
 
-        <View style={[styles.inputRow, { paddingBottom: bottomPad + 8 }]}>
-          <TouchableOpacity style={styles.inputIcon} onPress={() => Alert.alert("Camera", "Choose a source", [{ text: "Take Photo" }, { text: "Choose from Library" }, { text: "Cancel", style: "cancel" }])}>
-            <Ionicons name="camera-outline" size={24} color="#8E8E93" />
+        {/* Input bar */}
+        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 8, paddingTop: 8, paddingBottom: bottomPad + 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border, backgroundColor: t.bg, gap: 6 }}>
+          <TouchableOpacity style={{ padding: 6 }} onPress={() => Alert.alert("Media", "Choose a source", [{ text: "Take Photo" }, { text: "Choose from Library" }, { text: "Cancel", style: "cancel" }])}>
+            <Ionicons name="camera-outline" size={24} color={t.subtext} />
           </TouchableOpacity>
           <TextInput
-            style={styles.textInput}
+            style={{ flex: 1, backgroundColor: t.inputBg, borderRadius: 22, paddingHorizontal: 14, paddingTop: 9, paddingBottom: 9, color: t.inputText, fontSize: 15, maxHeight: 120 }}
             placeholder={editingMessage ? "Edit your message..." : "Message..."}
-            placeholderTextColor="#636366"
+            placeholderTextColor={t.inputPlaceholder}
             value={inputText}
             onChangeText={setInputText}
             returnKeyType="send"
@@ -413,16 +372,16 @@ export default function DMScreen() {
             multiline
           />
           {inputText.trim() ? (
-            <TouchableOpacity style={styles.inputIcon} onPress={handleSend}>
-              <Ionicons name="send" size={22} color="#6B7B5A" />
+            <TouchableOpacity style={{ padding: 6 }} onPress={handleSend}>
+              <Ionicons name="send" size={22} color={t.accent} />
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity style={styles.inputIcon} onPress={() => { setInputText("❤️"); }}>
-                <Ionicons name="mic-outline" size={24} color="#8E8E93" />
+              <TouchableOpacity style={{ padding: 6 }}>
+                <Ionicons name="mic-outline" size={24} color={t.subtext} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.inputIcon} onPress={() => { setInputText("❤️"); }}>
-                <Ionicons name="heart-outline" size={24} color="#8E8E93" />
+              <TouchableOpacity style={{ padding: 6 }} onPress={() => { setInputText("❤️"); }}>
+                <Ionicons name="heart-outline" size={24} color={t.subtext} />
               </TouchableOpacity>
             </>
           )}
@@ -431,76 +390,3 @@ export default function DMScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#1D1D1F",
-    gap: 8,
-  },
-  backBtn: { padding: 4 },
-  headerInfo: { flex: 1 },
-  headerName: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
-  headerStatus: { color: "#34C759", fontSize: 11, marginTop: 1 },
-  headerActions: { flexDirection: "row", gap: 2 },
-  callBtn: { padding: 8 },
-  messageList: { flex: 1 },
-  messageListContent: { paddingHorizontal: 10, paddingVertical: 12, gap: 2 },
-  messageRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, marginVertical: 1 },
-  messageRowSent: { justifyContent: "flex-end" },
-  avatarSlot: { width: 28 },
-  bubble: {
-    maxWidth: "74%",
-    minWidth: 56,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 18,
-  },
-  bubbleReceived: { backgroundColor: "#232326", borderBottomLeftRadius: 6 },
-  bubbleSent: { backgroundColor: "#2E7D4E", borderBottomRightRadius: 6, maxWidth: "70%" },
-  bubbleText: { color: "#EDEDED", fontSize: 14, lineHeight: 19, flexShrink: 1 },
-  bubbleTextSent: { color: "#FFFFFF" },
-  replyPreview: {
-    borderLeftWidth: 2,
-    borderLeftColor: "rgba(255,255,255,0.35)",
-    paddingLeft: 8,
-    marginBottom: 6,
-  },
-  replyPreviewAuthor: { color: "#FFFFFF", fontSize: 11, fontWeight: "700", opacity: 0.9 },
-  replyPreviewText: { color: "#C7C7CC", fontSize: 12, marginTop: 1 },
-  readRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2, paddingRight: 3 },
-  composerNoticeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 6,
-    backgroundColor: "#0A0A0A",
-  },
-  composerNoticeBar: {
-    width: 3,
-    height: 30,
-    borderRadius: 2,
-    backgroundColor: "#6B7B5A",
-  },
-  composerNoticeTitle: { color: "#DADADB", fontSize: 12, fontWeight: "600" },
-  composerNoticeText: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
-  inputRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 8, paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#2C2C2E",
-    backgroundColor: "#0A0A0A", gap: 4,
-  },
-  inputIcon: { padding: 6 },
-  textInput: {
-    flex: 1, backgroundColor: "#1C1C1E", borderRadius: 22,
-    paddingHorizontal: 14, paddingVertical: 9,
-    color: "#FFFFFF", fontSize: 15, maxHeight: 120,
-  },
-});

@@ -21,6 +21,7 @@ import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { VideoPostsProvider } from "@/hooks/useVideoPosts";
 import { StripeProviderWrapper } from "@/components/StripeProviderWrapper";
 import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
+import { ThemeProvider } from "@/hooks/useTheme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -141,6 +142,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <ThemeProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
@@ -160,6 +162,7 @@ export default function RootLayout() {
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

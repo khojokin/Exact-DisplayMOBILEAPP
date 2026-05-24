@@ -16,6 +16,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Conversation {
   id: string;
@@ -76,6 +77,7 @@ function AvatarCircle({ name, color, size = 44, online = false }: { name: string
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTheme();
   const [conversations, setConversations] = useState<Conversation[]>(CONVERSATIONS);
   const [searchText, setSearchText] = useState("");
   const [composeVisible, setComposeVisible] = useState(false);
@@ -156,27 +158,27 @@ export default function MessagesScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
       <View style={[styles.header, { paddingTop: topPad }]}>
-        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Messages</Text>
         <TouchableOpacity style={styles.newBtn} onPress={() => { Haptics.selectionAsync(); setComposeVisible(true); }}>
-          <Ionicons name="create-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="create-outline" size={24} color={t.text} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={16} color="#636366" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: t.card }]}>
+        <Ionicons name="search-outline" size={16} color={t.mutedText} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: t.text }]}
           placeholder="Search messages..."
-          placeholderTextColor="#636366"
+          placeholderTextColor={t.mutedText}
           value={searchText}
           onChangeText={setSearchText}
         />
         {searchText.length > 0 && (
           <TouchableOpacity onPress={() => setSearchText("")}>
-            <Ionicons name="close-circle" size={16} color="#636366" />
+            <Ionicons name="close-circle" size={16} color={t.mutedText} />
           </TouchableOpacity>
         )}
       </View>
@@ -206,24 +208,24 @@ export default function MessagesScreen() {
             <View style={styles.convoContent}>
               <View style={styles.convoTop}>
                 <View style={styles.nameRow}>
-                  <Text style={[styles.convoName, item.unread > 0 && styles.convoNameBold]}>{item.name}</Text>
+                  <Text style={[styles.convoName, { color: item.unread > 0 ? t.text : t.subtext }, item.unread > 0 && styles.convoNameBold]}>{item.name}</Text>
                   {item.verified && (
                     <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" style={{ marginLeft: 3 }} />
                   )}
                   {item.pinned && (
-                    <Ionicons name="pin" size={12} color="#8E8E93" style={{ marginLeft: 6 }} />
+                    <Ionicons name="pin" size={12} color={t.subtext} style={{ marginLeft: 6 }} />
                   )}
                 </View>
                 <View style={styles.metaRow}>
-                  {item.muted && <Ionicons name="notifications-off" size={12} color="#8E8E93" />}
-                  <Text style={styles.convoTime}>{item.timeAgo}</Text>
+                  {item.muted && <Ionicons name="notifications-off" size={12} color={t.subtext} />}
+                  <Text style={[styles.convoTime, { color: t.mutedText }]}>{item.timeAgo}</Text>
                 </View>
               </View>
               <View style={styles.convoBottom}>
                 {item.typing ? (
                   <Text style={styles.typingText}>typing...</Text>
                 ) : (
-                  <Text style={[styles.convoLastMsg, item.unread > 0 && styles.convoLastMsgBold]} numberOfLines={1}>
+                  <Text style={[styles.convoLastMsg, { color: item.unread > 0 ? t.subtext : t.mutedText }, item.unread > 0 && styles.convoLastMsgBold]} numberOfLines={1}>
                     {item.lastMessage}
                   </Text>
                 )}
@@ -249,7 +251,7 @@ export default function MessagesScreen() {
           </View>
         }
         ItemSeparatorComponent={() => (
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: "#2C2C2E", marginLeft: 76 }} />
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.border, marginLeft: 76 }} />
         )}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
@@ -257,8 +259,8 @@ export default function MessagesScreen() {
 
       {/* Instagram-style Compose New Message modal */}
       <Modal visible={composeVisible} animationType="slide" onRequestClose={() => setComposeVisible(false)}>
-        <View style={styles.composeContainer}>
-          <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+        <View style={[styles.composeContainer, { backgroundColor: t.bg }]}>
+          <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
           <View style={[styles.composeHeader, { paddingTop: topPad }]}>
             <TouchableOpacity onPress={() => setComposeVisible(false)}>
               <Text style={styles.composeCancelText}>Cancel</Text>
@@ -314,29 +316,29 @@ export default function MessagesScreen() {
           activeOpacity={1}
           onPress={() => setActionsVisible(false)}
         >
-          <TouchableOpacity activeOpacity={1} style={styles.actionSheet}>
-            <View style={styles.actionHeader}>
-              <Text style={styles.actionTitle}>{selectedConversation?.name ?? "Chat"}</Text>
-              <Text style={styles.actionSub}>Message actions</Text>
+          <TouchableOpacity activeOpacity={1} style={[styles.actionSheet, { backgroundColor: t.card, borderColor: t.border }]}>
+            <View style={[styles.actionHeader, { borderBottomColor: t.border }]}>
+              <Text style={[styles.actionTitle, { color: t.text }]}>{selectedConversation?.name ?? "Chat"}</Text>
+              <Text style={[styles.actionSub, { color: t.subtext }]}>Message actions</Text>
             </View>
             {conversationActions.map((action) => (
               <TouchableOpacity
                 key={action.id}
-                style={styles.actionRow}
+                style={[styles.actionRow, { borderBottomColor: t.border }]}
                 onPress={() => runConversationAction(action.id)}
               >
                 <Ionicons
                   name={action.icon}
                   size={18}
-                  color={action.destructive ? "#FF453A" : "#FFFFFF"}
+                  color={action.destructive ? t.danger : t.text}
                 />
-                <Text style={[styles.actionText, action.destructive && styles.actionTextDanger]}>
+                <Text style={[styles.actionText, { color: t.text }, action.destructive && { color: t.danger }]}>
                   {action.label}
                 </Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.actionCancel} onPress={() => setActionsVisible(false)}>
-              <Text style={styles.actionCancelText}>Cancel</Text>
+              <Text style={[styles.actionCancelText, { color: t.subtext }]}>Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
