@@ -58,23 +58,14 @@ export default function ProfileScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const isPremium = plan === "premium";
-  const theme = isPremium
-    ? {
-        background: "#F6FBF4",
-        card: "#FFFFFF",
-        text: "#153221",
-        subtext: "#567263",
-        border: "#DCE9D8",
-        accent: "#2E7D4E",
-      }
-    : {
-        background: "#0A0A0A",
-        card: "#1C1C1E",
-        text: "#FFFFFF",
-        subtext: "#8E8E93",
-        border: "#3C3C3E",
-        accent: "#4A6741",
-      };
+  const theme = {
+    background: "#0A0A0A",
+    card: "#1C1C1E",
+    text: "#FFFFFF",
+    subtext: "#8E8E93",
+    border: "#3C3C3E",
+    accent: "#4A6741",
+  };
   const avatarBorderColor = "#6B7B5A";
 
   async function handleAvatarBadgePress() {
@@ -111,7 +102,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}> 
-      <StatusBar barStyle={isPremium ? "dark-content" : "light-content"} backgroundColor={theme.background} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.background} />
 
       {/* Instagram-style avatar full-screen preview modal */}
       <Modal
