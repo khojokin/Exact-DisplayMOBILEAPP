@@ -20,7 +20,7 @@ import { AIProvider } from "@/hooks/useAI";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { VideoPostsProvider } from "@/hooks/useVideoPosts";
 import { ClerkProvider } from "@clerk/clerk-expo";
-import { StripeProvider } from "@stripe/stripe-react-native";
+import { StripeProviderWrapper } from "@/components/StripeProviderWrapper";
 import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
 import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
 
@@ -156,7 +156,7 @@ export default function RootLayout() {
                 afterSignUpUrl="/(tabs)"
                 afterSignOutUrl="/signin"
               >
-                <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+                <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
                   <SubscriptionProvider>
                     <VideoPostsProvider>
                       <AIProvider>
@@ -166,7 +166,7 @@ export default function RootLayout() {
                       </AIProvider>
                     </VideoPostsProvider>
                   </SubscriptionProvider>
-                </StripeProvider>
+                </StripeProviderWrapper>
               </ClerkProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
