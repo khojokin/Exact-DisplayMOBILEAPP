@@ -19,10 +19,8 @@ import { NotificationProvider } from "@/hooks/useNotifications";
 import { AIProvider } from "@/hooks/useAI";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { VideoPostsProvider } from "@/hooks/useVideoPosts";
-import { ClerkProvider } from "@clerk/clerk-expo";
 import { StripeProviderWrapper } from "@/components/StripeProviderWrapper";
 import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
-import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -147,15 +145,6 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
             <KeyboardProvider>
-              <ClerkProvider
-                publishableKey={CLERK_PUBLISHABLE_KEY}
-                tokenCache={tokenCache}
-                signInUrl="/signin"
-                signUpUrl="/signup"
-                afterSignInUrl="/(tabs)"
-                afterSignUpUrl="/(tabs)"
-                afterSignOutUrl="/signin"
-              >
                 <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
                   <SubscriptionProvider>
                     <VideoPostsProvider>
@@ -167,7 +156,6 @@ export default function RootLayout() {
                     </VideoPostsProvider>
                   </SubscriptionProvider>
                 </StripeProviderWrapper>
-              </ClerkProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

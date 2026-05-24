@@ -17,7 +17,6 @@ import { router } from "expo-router";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useStripeCheckout } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@clerk/clerk-expo";
 
 type Step = "plans" | "checkout" | "success";
 type PaidPlan = "premium";
@@ -36,7 +35,6 @@ const PLAN_CONFIG: Record<PaidPlan, { label: string; price: string; color: strin
 export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
-  const { user, isLoaded } = useUser();
   const { setPlan, syncFromSupabase } = useSubscription();
   const { createSubscription, openCheckout } = useStripeCheckout();
   const [step, setStep] = useState<Step>("plans");
@@ -54,23 +52,8 @@ export default function SubscriptionScreen() {
 
     setIsSubmitting(true);
     try {
-      if (!isLoaded) {
-        Alert.alert("Sign in required", "Please wait for your account to load.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const userId = user?.id;
-      if (!userId) {
-        Alert.alert("Sign in required", "Please sign in to subscribe.");
-        setIsSubmitting(false);
-        return;
-      }
-
       const sub = await createSubscription({
         priceId: premiumPlan.stripePriceId,
-        userId,
-        email: user.primaryEmailAddress?.emailAddress,
       });
       if (!sub) {
         setIsSubmitting(false);

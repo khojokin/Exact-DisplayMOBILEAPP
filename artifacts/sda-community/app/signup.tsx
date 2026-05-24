@@ -14,7 +14,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useSignUp } from "@clerk/clerk-expo";
 
 function GoogleIcon() {
   return (
@@ -26,19 +25,12 @@ function GoogleIcon() {
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signUp, setActive } = useSignUp();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [authTimedOut, setAuthTimedOut] = useState(false);
-
-  React.useEffect(() => {
-    const timeout = setTimeout(() => setAuthTimedOut(true), 8000);
-    return () => clearTimeout(timeout);
-  }, []);
 
   const handleSignUp = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
@@ -49,47 +41,15 @@ export default function SignUpScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
-
-    if (!isLoaded || !signUp) {
-      if (!authTimedOut) {
-        return;
-      }
-
-      Alert.alert(
-        "Authentication not ready",
-        "The auth service is still starting up. Please try again in a few seconds."
-      );
-      return;
-    }
-
     setLoading(true);
-    try {
-      const result = await signUp.create({
-        emailAddress: email.trim(),
-        password,
-        username: username.trim() || undefined,
-      });
-
-      if (result.status !== "complete") {
-        Alert.alert(
-          "Account created",
-          "Please finish any verification required in your Clerk dashboard before signing in."
-        );
-        return;
-      }
-
-      await setActive?.({ session: result.createdSessionId });
-      router.replace("/(tabs)");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create the account right now.";
-      Alert.alert("Sign up failed", message);
-    } finally {
+    setTimeout(() => {
       setLoading(false);
-    }
+      router.replace("/(tabs)");
+    }, 500);
   };
 
   const handleSocial = (_provider: "Google" | "Apple") => {
-    Alert.alert("Coming soon", "Social sign-up can be enabled from your Clerk dashboard.");
+    router.replace("/(tabs)");
   };
 
   return (
