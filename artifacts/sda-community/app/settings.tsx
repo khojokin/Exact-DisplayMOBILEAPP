@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useAI } from "@/hooks/useAI";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface SettingItem {
   id: string;
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const { aiEnabled, setAiEnabled } = useAI();
+  const { isPremium, privacyMode, readReceipts, setPrivacyMode, setReadReceipts } = useSubscription();
 
   const SETTINGS_SECTIONS = [
     {
@@ -46,7 +48,9 @@ export default function SettingsScreen() {
       title: "Preferences",
       data: [
         { id: "appearance", label: "Dark Mode", icon: "color-palette-outline", iconColor: "#8B3A8B", type: "toggle", defaultOn: darkMode },
-        { id: "ai", label: "erha AI Assistant", icon: "sparkles-outline", iconColor: "#6264A7", type: "toggle", defaultOn: aiEnabled },
+        { id: "ai", label: "AI Assistant", icon: "sparkles-outline", iconColor: "#6264A7", type: "toggle", defaultOn: aiEnabled },
+        { id: "privacyMode", label: "Privacy Mode", icon: "shield-checkmark-outline", iconColor: "#3B5BDB", type: "toggle", defaultOn: privacyMode },
+        { id: "readReceipts", label: "Read Receipts", icon: "mail-open-outline", iconColor: "#D4AF37", type: "toggle", defaultOn: readReceipts },
         { id: "accessibility", label: "Accessibility", icon: "eye-outline", iconColor: "#0E7B5B", type: "nav" },
         { id: "language", label: "Language & Region", icon: "globe-outline", iconColor: "#C85200", type: "nav" },
       ] as SettingItem[],
@@ -54,7 +58,7 @@ export default function SettingsScreen() {
     {
       title: "Subscriptions",
       data: [
-        { id: "subscriptions", label: "Submit Verification", icon: "ribbon-outline", iconColor: "#3B5BDB", type: "nav" },
+        { id: "goPremium", label: "Subscription ($6.99/month)", icon: "flash-outline", iconColor: "#D4AF37", type: "nav" },
       ] as SettingItem[],
     },
     {
@@ -92,11 +96,8 @@ export default function SettingsScreen() {
         Alert.alert("Accessibility", "Font size and display options will be available in a future update.");
         break;
       case "language": router.push("/language-settings"); break;
-      case "subscriptions":
-        Alert.alert(
-          "Submit Verification",
-          "Verification submission will be available here in the next update."
-        );
+      case "goPremium":
+        router.push("/subscription");
         break;
       case "blocked": router.push("/blocked-members"); break;
       case "muted": router.push("/muted-members"); break;
@@ -123,6 +124,13 @@ export default function SettingsScreen() {
     }
   }
 
+  function handlePremiumUpgradePrompt() {
+    Alert.alert("Premium Feature", "Upgrade to PREMIUM to unlock this setting.", [
+      { text: "Not now", style: "cancel" },
+      { text: "Upgrade", onPress: () => router.push("/subscription") },
+    ]);
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
@@ -143,7 +151,8 @@ export default function SettingsScreen() {
         renderItem={({ item, index, section }) => {
           const isFirst = index === 0;
           const isLast = index === section.data.length - 1;
-          const isToggle = item.id === "notifications" || item.id === "appearance" || item.id === "ai";
+          const isToggle = item.id === "notifications" || item.id === "appearance" || item.id === "ai" || item.id === "privacyMode" || item.id === "readReceipts";
+          const isPremiumLocked = (item.id === "privacyMode" || item.id === "readReceipts") && !isPremium;
           const isDanger = item.type === "danger";
 
           return (
@@ -154,25 +163,44 @@ export default function SettingsScreen() {
                 isLast && styles.settingItemLast,
                 !isLast && styles.settingItemBorder,
               ]}
-              activeOpacity={isToggle ? 1 : 0.7}
-              onPress={isToggle ? undefined : () => handlePress(item)}
+              activeOpacity={isToggle && !isPremiumLocked ? 1 : 0.7}
+              onPress={isToggle ? (isPremiumLocked ? handlePremiumUpgradePrompt : undefined) : () => handlePress(item)}
             >
               <View style={[styles.iconWrap, { backgroundColor: item.iconColor + "22" }]}>
                 <Ionicons name={item.icon as any} size={18} color={item.iconColor} />
               </View>
               <Text style={[styles.settingLabel, isDanger && { color: "#FF453A" }]}>{item.label}</Text>
               {isToggle ? (
-                <Switch
-                  value={item.id === "notifications" ? pushEnabled : item.id === "ai" ? aiEnabled : darkMode}
-                  onValueChange={(v) => {
-                    Haptics.selectionAsync();
-                    if (item.id === "notifications") setPushEnabled(v);
-                    else if (item.id === "ai") setAiEnabled(v);
-                    else setDarkMode(v);
-                  }}
-                  trackColor={{ false: "#3C3C3E", true: "#6B7B5A" }}
-                  thumbColor="#FFFFFF"
-                />
+                isPremiumLocked ? (
+                  <View style={styles.lockWrap}>
+                    <Ionicons name="lock-closed" size={14} color="#D4AF37" />
+                    <Text style={styles.lockText}>Premium</Text>
+                  </View>
+                ) : (
+                  <Switch
+                    value={
+                      item.id === "notifications"
+                        ? pushEnabled
+                        : item.id === "ai"
+                        ? aiEnabled
+                        : item.id === "privacyMode"
+                        ? privacyMode
+                        : item.id === "readReceipts"
+                        ? readReceipts
+                        : darkMode
+                    }
+                    onValueChange={(v) => {
+                      Haptics.selectionAsync();
+                      if (item.id === "notifications") setPushEnabled(v);
+                      else if (item.id === "ai") setAiEnabled(v);
+                      else if (item.id === "privacyMode") setPrivacyMode(v);
+                      else if (item.id === "readReceipts") setReadReceipts(v);
+                      else setDarkMode(v);
+                    }}
+                    trackColor={{ false: "#3C3C3E", true: "#6B7B5A" }}
+                    thumbColor="#FFFFFF"
+                  />
+                )
               ) : isDanger ? (
                 <Ionicons name="log-out-outline" size={18} color="#FF453A" />
               ) : (
@@ -248,4 +276,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   settingLabel: { flex: 1, color: "#FFFFFF", fontSize: 15 },
+  lockWrap: { flexDirection: "row", alignItems: "center", gap: 4 },
+  lockText: { color: "#D4AF37", fontSize: 12, fontWeight: "700" },
 });

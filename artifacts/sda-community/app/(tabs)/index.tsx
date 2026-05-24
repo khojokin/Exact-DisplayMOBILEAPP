@@ -12,16 +12,19 @@ import {
   Share,
   Modal,
   Dimensions,
+  ActivityIndicator,
   Animated,
   Image,
+  RefreshControl,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useVideoPosts } from "@/hooks/useVideoPosts";
 
-const { height: SCREEN_H } = Dimensions.get("window");
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 const DAILY_VERSES = [
   { ref: "Jeremiah 29:11", text: "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future." },
@@ -107,6 +110,7 @@ interface CommunityPost {
   content: string;
   hasMedia?: boolean;
   imageKey?: "banner" | "logo";
+  mediaType?: "image" | "video";
   reactions: number;
   comments: number;
   liked: boolean;
@@ -116,15 +120,17 @@ interface CommunityPost {
 
 type FeedItem =
   | { type: "post"; data: CommunityPost }
-  | { type: "suggested_people" };
+  | { type: "suggested_people" }
+  | { type: "suggested_shorts" };
 
 const STORIES = [
   { id: "you", label: "Your Story", color: "#4A6741", isYou: true },
-  { id: "pj", label: "James", color: "#3B5BDB", initials: "PJ" },
+  { id: "pj", label: "James", color: "#3B5BDB", initials: "PJ", isLive: true, liveId: "pj" },
   { id: "er", label: "Ruth", color: "#B8860B", initials: "ER" },
-  { id: "ga", label: "Grace", color: "#0E7B5B", initials: "GA" },
+  { id: "ga", label: "Grace", color: "#0E7B5B", initials: "GA", isLive: true, liveId: "ga" },
   { id: "ao", label: "Abigail", color: "#8B3A8B", initials: "AO" },
   { id: "dm", label: "David", color: "#C85200", initials: "DM" },
+  { id: "go-live", label: "Go Live", color: "#B33A3A", isGoLive: true },
 ];
 
 const COMMUNITY_POSTS: CommunityPost[] = [
@@ -184,6 +190,13 @@ const SUGGESTED_PEOPLE = [
   { id: "sp5", name: "Naomi Asante", role: "Youth Leader", color: "#0E7B5B", verified: false },
 ];
 
+const SUGGESTED_SHORTS = [
+  { id: "ss1", creator: "James", title: "Morning devotion in 30 seconds", color: "#5A3E2B" },
+  { id: "ss2", creator: "Grace", title: "Worship chorus for today", color: "#2D4A66" },
+  { id: "ss3", creator: "Ruth", title: "Prayer tip before bedtime", color: "#3A5A3A" },
+  { id: "ss4", creator: "David", title: "Choir rehearsal highlight", color: "#5C2F3E" },
+];
+
 
 const AVATAR_COLORS: Record<string, string> = {
   "Pastor James Osei": "#3B5BDB",
@@ -208,24 +221,35 @@ function AvatarCircle({ name, color, size = 36 }: { name: string; color?: string
 
 function StoryCircle({ story }: { story: typeof STORIES[0] }) {
   function handlePress() {
-    if (story.isYou) {
+    if (story.isGoLive) {
+      router.push("/go-live");
+    } else if (story.isYou) {
       router.push({ pathname: "/(tabs)/new-post" });
+    } else if (story.liveId) {
+      router.push({ pathname: "/live", params: { id: story.liveId } });
     } else {
       router.push({ pathname: "/story/[id]", params: { id: story.id } });
     }
   }
   return (
     <TouchableOpacity style={styles.storyItem} onPress={handlePress} activeOpacity={0.8}>
-      <View style={[styles.storyRing, { borderColor: story.isYou ? "#2C2C2E" : "#6B7B5A" }]}>
+      <View style={[styles.storyRing, { borderColor: story.isLive ? "#FF3B30" : story.isGoLive ? "#FF6A63" : story.isYou ? "#2C2C2E" : "#6B7B5A", borderStyle: story.isGoLive ? "dashed" : "solid" }]}> 
         <View style={[styles.storyAvatar, { backgroundColor: story.color }]}>
-          {story.isYou ? (
+          {story.isGoLive ? (
+            <Ionicons name="radio-outline" size={20} color="#FFFFFF" />
+          ) : story.isYou ? (
             <Ionicons name="add" size={22} color="#FFFFFF" />
           ) : (
             <Text style={styles.storyInitials}>{story.initials}</Text>
           )}
         </View>
+        {story.isLive && (
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveBadgeText}>LIVE</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.storyLabel} numberOfLines={1}>{story.label}</Text>
+      <Text style={[styles.storyLabel, story.isLive && styles.storyLabelLive]} numberOfLines={1}>{story.label}</Text>
     </TouchableOpacity>
   );
 }
@@ -262,7 +286,7 @@ function SuggestedPeopleBanner() {
               </View>
               <View style={styles.personNameRow}>
                 <Text style={styles.personName} numberOfLines={1}>{person.name.split(" ")[0]}</Text>
-                {person.verified && <Ionicons name="checkmark-circle" size={11} color="#3B5BDB" />}
+                {person.verified && <Ionicons name="checkmark-circle" size={11} color="#0E7B5B" />}
               </View>
               <TouchableOpacity
                 style={[styles.followBtn, isFollowed && styles.followBtnActive]}
@@ -288,6 +312,47 @@ function SuggestedPeopleBanner() {
             </TouchableOpacity>
           );
         })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function SuggestedShortsStrip({ dynamicShorts }: { dynamicShorts: { id: string; creator: string; title: string; color: string }[] }) {
+  const items = dynamicShorts.length ? dynamicShorts : SUGGESTED_SHORTS;
+  const previewItems = items.slice(0, 8);
+
+  return (
+    <View style={styles.shortsSection}>
+      <View style={styles.shortsHeader}>
+            <Text style={styles.shortsTitle}>Suggested Videos</Text>
+        <TouchableOpacity onPress={() => router.push("/shorts-see-all" as any)}> 
+          <Text style={styles.shortsSeeAll}>See all</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.shortsScroll}
+      >
+        {previewItems.map((short) => (
+          <TouchableOpacity
+            key={short.id}
+            style={[styles.shortCard, { backgroundColor: short.color }]}
+            activeOpacity={0.9}
+            onPress={() => router.push("/shorts")}
+          >
+            <View style={styles.shortOverlay} />
+            <View style={styles.shortPlayPill}>
+              <Ionicons name="play" size={10} color="#FFF" />
+            </View>
+            <View style={styles.shortBottomMeta}>
+              <Text style={styles.shortMetaHandle}>@{short.creator.toLowerCase()}</Text>
+              <View style={styles.shortMetaDot} />
+              <Text style={styles.shortMetaViews}>For You</Text>
+            </View>
+            <Text style={styles.shortCreator}>{short.creator}</Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
@@ -427,6 +492,12 @@ function PostCard({
           onPress={() => router.push({ pathname: "/post/[id]", params: { id: post.id } })}
         >
           <Image source={imageSource} style={styles.postImage} resizeMode="cover" />
+          {post.mediaType === "video" && (
+            <View style={styles.videoOverlay}>
+              <Ionicons name="play-circle" size={44} color="#FFF" />
+              <Text style={styles.videoOverlayText}>Video</Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
 
@@ -486,17 +557,24 @@ function PostCard({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string }>();
+  const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string; newPostType?: string }>();
   const [posts, setPosts] = useState<CommunityPost[]>(COMMUNITY_POSTS);
   const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set());
   const [sheetPost, setSheetPost] = useState<CommunityPost | null>(null);
+  const [feedSeed, setFeedSeed] = useState(0);
+  const { videoPosts } = useVideoPosts();
   const { unreadCount, addNotification } = useNotifications();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [refreshing, setRefreshing] = useState(false);
+  const [bottomRefreshing, setBottomRefreshing] = useState(false);
   const verseNotifiedRef = useRef(false);
   const consumedPostedIds = useRef<Set<string>>(new Set());
+  const consumedVideoIds = useRef<Set<string>>(new Set());
+  const bottomRefreshLockRef = useRef(false);
 
   const newPostId = Array.isArray(params.newPostId) ? params.newPostId[0] : params.newPostId;
   const newPostCaption = Array.isArray(params.newPostCaption) ? params.newPostCaption[0] : params.newPostCaption;
+  const newPostType = Array.isArray(params.newPostType) ? params.newPostType[0] : params.newPostType;
 
   useEffect(() => {
     if (!newPostId || !newPostCaption) return;
@@ -510,7 +588,8 @@ export default function HomeScreen() {
         timeAgo: "now",
         content: newPostCaption,
         hasMedia: true,
-        imageKey: "banner",
+        imageKey: newPostType === "video" ? undefined : "banner",
+        mediaType: newPostType === "video" ? "video" : "image",
         reactions: 0,
         comments: 0,
         liked: false,
@@ -519,7 +598,33 @@ export default function HomeScreen() {
       },
       ...prev,
     ]);
-  }, [newPostId, newPostCaption]);
+  }, [newPostId, newPostCaption, newPostType]);
+
+  useEffect(() => {
+    if (!videoPosts.length) return;
+    setPosts((prev) => {
+      const inserts: CommunityPost[] = [];
+      videoPosts.forEach((vp) => {
+        if (consumedVideoIds.current.has(vp.id)) return;
+        consumedVideoIds.current.add(vp.id);
+        inserts.push({
+          id: `v-${vp.id}`,
+          author: vp.creator,
+          role: vp.creatorRole,
+          timeAgo: "now",
+          content: vp.caption,
+          hasMedia: true,
+          mediaType: "video",
+          reactions: 0,
+          comments: 0,
+          liked: false,
+          saved: false,
+          commentsPreview: [],
+        });
+      });
+      return inserts.length ? [...inserts, ...prev] : prev;
+    });
+  }, [videoPosts]);
 
   // Decide once on mount whether and where to show suggested people
   const suggestConfig = useRef({
@@ -530,6 +635,7 @@ export default function HomeScreen() {
   // ── Algorithm feed: rescore + reshuffle on every visit ──
   useFocusEffect(
     useCallback(() => {
+      setFeedSeed((prev) => prev + 1);
       setPosts((prev) =>
         [...prev].sort((a, b) => {
           const score = (p: CommunityPost) =>
@@ -595,6 +701,48 @@ export default function HomeScreen() {
     });
   }
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    Haptics.selectionAsync();
+
+    // Re-score and reshuffle to mimic fetching a fresh home feed.
+    setFeedSeed((prev) => prev + 1);
+    setPosts((prev) =>
+      [...prev].sort((a, b) => {
+        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
+        return score(b) - score(a);
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    setRefreshing(false);
+  }, [refreshing]);
+
+  const handleBottomRefresh = useCallback(async () => {
+    if (bottomRefreshing || bottomRefreshLockRef.current) return;
+
+    bottomRefreshLockRef.current = true;
+    setBottomRefreshing(true);
+    Haptics.selectionAsync();
+
+    setFeedSeed((prev) => prev + 1);
+    setPosts((prev) =>
+      [...prev].sort((a, b) => {
+        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
+        return score(b) - score(a);
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    setBottomRefreshing(false);
+
+    // Prevent repeated rapid-fire triggers while user stays near the bottom.
+    setTimeout(() => {
+      bottomRefreshLockRef.current = false;
+    }, 900);
+  }, [bottomRefreshing]);
+
   // Build mixed feed: posts + optional suggested people card
   const feedItems = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = posts.map((p) => ({ type: "post", data: p }));
@@ -602,8 +750,25 @@ export default function HomeScreen() {
       const pos = Math.min(suggestConfig.current.insertAfter, items.length);
       items.splice(pos, 0, { type: "suggested_people" });
     }
+
+    const shortsInsertAfter = Math.min(Math.max(1, (feedSeed % 3) + 1), items.length);
+    const shortsPos = Math.min(shortsInsertAfter, items.length);
+    if (items.length > 0) {
+      items.splice(shortsPos, 0, { type: "suggested_shorts" });
+    }
+
     return items;
-  }, [posts]);
+  }, [posts, feedSeed]);
+
+  const suggestedShortItems = useMemo(() => {
+    if (!videoPosts.length) return [];
+    return videoPosts.slice(0, 6).map((vp, idx) => ({
+      id: `s-${vp.id}`,
+      creator: vp.creator.split(" ")[0],
+      title: vp.caption || "New video from your community",
+      color: idx % 2 === 0 ? "#2D4A66" : "#5A3E2B",
+    }));
+  }, [videoPosts]);
 
   const header = (
     <View>
@@ -662,6 +827,9 @@ export default function HomeScreen() {
           if (item.type === "suggested_people") {
             return <SuggestedPeopleBanner />;
           }
+          if (item.type === "suggested_shorts") {
+            return <SuggestedShortsStrip dynamicShorts={suggestedShortItems} />;
+          }
           return (
             <PostCard
               post={item.data}
@@ -680,8 +848,26 @@ export default function HomeScreen() {
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        onEndReached={handleBottomRefresh}
+        onEndReachedThreshold={0.35}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        ListFooterComponent={
+          bottomRefreshing ? (
+            <View style={styles.bottomRefreshIndicator}>
+              <ActivityIndicator size="small" color="#A7A7AF" />
+            </View>
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#E6E6EA"
+            colors={["#E6E6EA"]}
+            progressBackgroundColor="#1C1C1E"
+          />
+        }
       />
     </View>
   );
@@ -728,6 +914,73 @@ const styles = StyleSheet.create({
   },
   storyInitials: { color: "#FFF", fontWeight: "700", fontSize: 18 },
   storyLabel: { color: "#8E8E93", fontSize: 11, marginTop: 5, textAlign: "center" },
+  storyLabelLive: { color: "#FF6B63", fontWeight: "700" },
+  shortsSection: {
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  shortsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  shortsTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  shortsSeeAll: { color: "#B0B0B5", fontSize: 12, fontWeight: "600" },
+  shortsScroll: {
+    paddingHorizontal: 14,
+    gap: 10,
+    flexDirection: "row",
+    paddingRight: 14,
+  },
+  shortCard: {
+    width: SCREEN_W * 0.44,
+    height: 186,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+    padding: 10,
+    justifyContent: "flex-end",
+  },
+  shortOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.24)",
+  },
+  shortPlayPill: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  shortPlayText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
+  shortBottomMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 5,
+  },
+  shortMetaHandle: { color: "#FFF", fontSize: 10, fontWeight: "700", opacity: 0.95 },
+  shortMetaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.75)" },
+  shortMetaViews: { color: "#FFF", fontSize: 10, opacity: 0.85 },
+  shortCreator: { color: "#F4F4F5", fontSize: 12, fontWeight: "700" },
+  liveBadge: {
+    position: "absolute",
+    bottom: -6,
+    alignSelf: "center",
+    backgroundColor: "#FF3B30",
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  liveBadgeText: { color: "#FFF", fontSize: 8, fontWeight: "800" },
   filterRow: { backgroundColor: "#0A0A0A", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#2C2C2E" },
   filterContent: { paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   filterPill: {
@@ -749,12 +1002,20 @@ const styles = StyleSheet.create({
   moreBtn: { padding: 4 },
   postContent: { color: "#DADADB", fontSize: 14, lineHeight: 20, paddingHorizontal: 14, marginBottom: 10 },
   postImageWrap: {
-    height: 210,
+    aspectRatio: 4 / 5,
     backgroundColor: "#1C1C1E",
     marginBottom: 10,
     overflow: "hidden",
   },
   postImage: { width: "100%", height: "100%" },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.18)",
+  },
+  videoOverlayText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
   reactionBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, marginBottom: 6, gap: 4 },
   reactionBtn: { padding: 4, marginRight: 8 },
   reactionCount: { paddingHorizontal: 14, marginBottom: 4 },
@@ -813,6 +1074,10 @@ const styles = StyleSheet.create({
   followBtnActive: { backgroundColor: "#2C2C2E" },
   followBtnText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
   followBtnTextActive: { color: "#8E8E93" },
+  bottomRefreshIndicator: {
+    alignItems: "center",
+    paddingVertical: 16,
+  },
   // Bottom sheet styles
   sheetOverlay: {
     flex: 1,

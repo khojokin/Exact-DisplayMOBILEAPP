@@ -49,6 +49,17 @@ export default function HelpSupportScreen() {
           </View>
         </View>
 
+        <TouchableOpacity style={styles.liveChatCard} onPress={() => router.push("/dm/support") }>
+          <View style={[styles.liveChatIcon, { backgroundColor: "#0E7B5B22" }]}>
+            <Ionicons name="chatbubbles-outline" size={24} color="#0E7B5B" />
+          </View>
+          <View style={styles.contactInfo}>
+            <Text style={styles.contactTitle}>Live Chat</Text>
+            <Text style={styles.contactSub}>Talk to support and the admin team now</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color="#636366" />
+        </TouchableOpacity>
+
         <Text style={styles.sectionLabel}>FREQUENTLY ASKED QUESTIONS</Text>
         <View style={styles.card}>
           {FAQS.map((faq, i) => (
@@ -84,6 +95,8 @@ const styles = StyleSheet.create({
   headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   content: { paddingHorizontal: 16, paddingTop: 12 },
   contactCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#111", borderRadius: 14, padding: 16, gap: 14, marginBottom: 10 },
+  liveChatCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#111", borderRadius: 14, padding: 16, gap: 14, marginTop: 6 },
+  liveChatIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   contactInfo: { flex: 1 },
   contactTitle: { color: "#FFF", fontSize: 15, fontWeight: "600" },
   contactSub: { color: "#8E8E93", fontSize: 13, marginTop: 2 },

@@ -108,7 +108,7 @@ export default function SabbathSchoolScreen() {
             <Text style={styles.lessonTitle}>{item.title}</Text>
             <Text style={styles.lessonPreview} numberOfLines={2}>{item.lesson}</Text>
             <View style={styles.lessonFooter}>
-              <Ionicons name="book-open-outline" size={14} color="#6B7B5A" />
+              <Ionicons name="book-outline" size={14} color="#6B7B5A" />
               <Text style={styles.lessonFooterText}>{item.days.length} days</Text>
               <Ionicons name="chevron-forward" size={14} color="#636366" style={{ marginLeft: "auto" }} />
             </View>

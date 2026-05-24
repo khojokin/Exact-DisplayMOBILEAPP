@@ -8,7 +8,6 @@ import {
   Platform,
   StatusBar,
   KeyboardAvoidingView,
-  ScrollView,
   Alert,
   Animated,
   Easing,
@@ -105,16 +104,17 @@ export default function SignInScreen() {
     ]).start();
   }, []);
 
-  const handleSignIn = () => {
-    if (!identifier.trim() || !password.trim()) {
-      Alert.alert("Missing fields", "Please enter your email/username and password.");
-      return;
+  const handleSignIn = async () => {
+    setLoading(true);
+    try {
+      router.replace("/(tabs)");
+    } finally {
+      setLoading(false);
     }
-    router.replace("/(tabs)");
   };
 
   const handleSocial = (_provider: "Google" | "Apple") => {
-    router.replace("/(tabs)");
+    Alert.alert("Coming soon", "Social sign-in can be enabled from your Clerk dashboard.");
   };
 
   return (
@@ -124,25 +124,23 @@ export default function SignInScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scroll,
+        <View
+          style={[
+            styles.inner,
             {
               paddingTop: Platform.OS === "web" ? 60 : insets.top + 30,
               paddingBottom: insets.bottom + 40,
             },
           ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         >
           {/* ── Animated logo + title ─────────────────────── */}
           <View style={styles.logoSection}>
-            <Animated.View style={[styles.logoCircle, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
+            <Animated.View style={[{ transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
               <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
             </Animated.View>
 
             <Animated.Text style={[styles.appName, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}>
-              SDA Community
+              Seventh Day Adventist
             </Animated.Text>
 
             <Animated.Text style={[styles.tagline, { opacity: taglineOp }]}>
@@ -238,7 +236,7 @@ export default function SignInScreen() {
           <Animated.Text style={[styles.termsText, { opacity: footerOp }]}>
             By continuing you agree to our Terms of Service and Privacy Policy.
           </Animated.Text>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -246,20 +244,9 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0A0A0A" },
-  scroll: { flexGrow: 1, paddingHorizontal: 24 },
+  inner: { flex: 1, paddingHorizontal: 24 },
   logoSection: { alignItems: "center", marginBottom: 36 },
-  logoCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  logoImage: { width: 60, height: 60 },
+  logoImage: { width: 88, height: 88 },
   appName: {
     color: "#FFFFFF",
     fontSize: 34,
@@ -295,6 +282,24 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: "#2C2C2E" },
   dividerText: { color: "#636366", fontSize: 13 },
   form: { gap: 12 },
+  authStatusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#16161A",
+    borderColor: "#2C2C2E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  authStatusText: {
+    flex: 1,
+    color: "#E5E5EA",
+    fontSize: 13,
+    lineHeight: 18,
+  },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",

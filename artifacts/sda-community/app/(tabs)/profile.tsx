@@ -18,12 +18,13 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
 const PROFILE = {
   name: "Maria Santos",
-  username: "M...",
+  username: "mariasantos",
   role: "Member",
   bio: "SDA member since 2019 · Daily Word devotee 🙏",
   followedBy: "Followed by Pastor, Elder",
@@ -51,9 +52,30 @@ const GRID_POSTS = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const { plan } = useSubscription();
   const [activeTab, setActiveTab] = useState("grid");
   const [avatarPreview, setAvatarPreview] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  const isPremium = plan === "premium";
+  const theme = isPremium
+    ? {
+        background: "#F6FBF4",
+        card: "#FFFFFF",
+        text: "#153221",
+        subtext: "#567263",
+        border: "#DCE9D8",
+        accent: "#2E7D4E",
+      }
+    : {
+        background: "#0A0A0A",
+        card: "#1C1C1E",
+        text: "#FFFFFF",
+        subtext: "#8E8E93",
+        border: "#3C3C3E",
+        accent: "#4A6741",
+      };
+  const avatarBorderColor = "#6B7B5A";
 
   async function handleAvatarBadgePress() {
     Alert.alert("Profile Photo", "Choose an option", [
@@ -88,8 +110,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}> 
+      <StatusBar barStyle={isPremium ? "dark-content" : "light-content"} backgroundColor={theme.background} />
 
       {/* Instagram-style avatar full-screen preview modal */}
       <Modal
@@ -109,21 +131,6 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.modalName}>{PROFILE.name}</Text>
             <Text style={styles.modalUsername}>@mariasantos</Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalBtn}
-                onPress={() => { setAvatarPreview(false); router.push("/edit-profile"); }}
-              >
-                <Ionicons name="pencil-outline" size={16} color="#FFF" />
-                <Text style={styles.modalBtnText}>Edit Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnSecondary]}
-                onPress={() => setAvatarPreview(false)}
-              >
-                <Text style={styles.modalBtnText}>Close</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -132,10 +139,10 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 80 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.topBar, { paddingTop: topPad }]}>
-          <Text style={styles.username}>{PROFILE.username}</Text>
+        <View style={[styles.topBar, { paddingTop: topPad }]}> 
+          <Text style={[styles.username, { color: theme.text }]}>@{PROFILE.username}</Text>
           <TouchableOpacity onPress={() => router.push("/settings")}>
-            <Feather name="menu" size={24} color="#FFFFFF" />
+            <Feather name="menu" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -143,7 +150,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarCol}>
             {/* Tapping avatar opens preview; tapping badge opens upload picker */}
             <TouchableOpacity onPress={() => setAvatarPreview(true)} activeOpacity={0.85}>
-              <View style={styles.avatarCircle}>
+              <View style={[styles.avatarCircle, { borderColor: avatarBorderColor }]}>
                 {profileImage ? (
                   <Image source={{ uri: profileImage }} style={styles.avatarImage} />
                 ) : (
@@ -179,34 +186,43 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.bioSection}>
-          <Text style={styles.profileName}>{PROFILE.name}</Text>
-          <Text style={styles.bioText}>{PROFILE.bio}</Text>
-          <View style={styles.followedByRow}>
-            <View style={styles.sdaBadge}>
-              <Text style={styles.sdaBadgeText}>SDA</Text>
-            </View>
-            <Text style={styles.followedByText}>{PROFILE.followedBy}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.profileName, { color: theme.text }]}>{PROFILE.name}</Text>
           </View>
+          <Text style={[styles.bioText, { color: theme.subtext }]}>{PROFILE.bio}</Text>
+          <Text style={[styles.followedByText, { color: theme.subtext }]}>Followed by people you know</Text>
+
         </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={styles.editProfileBtn}
+            style={[styles.editProfileBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => router.push("/edit-profile")}
           >
-            <Text style={styles.editProfileText}>Edit Profile</Text>
+            <Text style={[styles.editProfileText, { color: theme.text }]}>Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.shareProfileBtn}
+            style={[styles.analyticsBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push("/analytics")}
+          >
+            <Ionicons name="bar-chart-outline" size={15} color={theme.text} />
+            <Text style={[styles.analyticsBtnText, { color: theme.text }]}>Analytics</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shareIconBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => Share.share({ message: "Check out Maria Santos on SDA Community! A fellow believer growing in faith 🙏" })}
           >
-            <Text style={styles.shareProfileText}>Share Profile</Text>
+            <Ionicons name="share-social-outline" size={18} color={theme.text} />
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.resourcesRow}>
           <TouchableOpacity
-            style={styles.addBtn}
+            style={[styles.resourcesBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => router.push("/resources")}
           >
-            <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+            <Ionicons name="book-outline" size={15} color={theme.text} />
+            <Text style={[styles.resourcesBtnText, { color: theme.text }]}>Resources</Text>
           </TouchableOpacity>
         </View>
 
@@ -252,6 +268,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   username: { color: "#FFFFFF", fontSize: 20, fontWeight: "700" },
+  upgradeBanner: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#4C3B09",
+    backgroundColor: "#2A220D",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  upgradeTitle: { color: "#F7E8B0", fontSize: 14, fontWeight: "800" },
+  upgradeSubtitle: { color: "#D5C17D", fontSize: 12, marginTop: 2 },
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -284,6 +314,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#0A0A0A",
   },
+  avatarVerifiedDot: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#0A0A0A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   statsCol: {
     flex: 1,
     flexDirection: "row",
@@ -298,6 +340,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   profileName: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   bioText: { color: "#AEAEB2", fontSize: 13, lineHeight: 18 },
   followedByRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
   sdaBadge: {
@@ -327,26 +370,46 @@ const styles = StyleSheet.create({
     borderColor: "#3C3C3E",
   },
   editProfileText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  shareProfileBtn: {
-    flex: 1,
+  shareIconBtn: {
+    width: 44,
+    height: 36,
     backgroundColor: "#1C1C1E",
     borderRadius: 10,
-    paddingVertical: 9,
-    alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#3C3C3E",
-  },
-  shareProfileText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  addBtn: {
-    backgroundColor: "#1C1C1E",
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#3C3C3E",
   },
+  analyticsBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 10,
+    paddingVertical: 9,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#3C3C3E",
+  },
+  analyticsBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
+  resourcesRow: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  resourcesBtn: {
+    width: "48%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 10,
+    paddingVertical: 9,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#3C3C3E",
+  },
+  resourcesBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
   tabBar: {
     flexDirection: "row",
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -367,11 +430,13 @@ const styles = StyleSheet.create({
   photoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 2,
+    justifyContent: "space-between",
+    rowGap: 2,
     marginBottom: 16,
+    paddingHorizontal: 1,
   },
   gridCell: {
-    width: "32.7%",
+    width: "33.1%",
     aspectRatio: 1,
     alignItems: "center",
     justifyContent: "center",

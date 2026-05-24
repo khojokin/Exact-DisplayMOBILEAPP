@@ -8,13 +8,13 @@ import {
   Platform,
   StatusBar,
   KeyboardAvoidingView,
-  ScrollView,
   Alert,
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useSignUp } from "@clerk/clerk-expo";
 
 function GoogleIcon() {
   return (
@@ -26,14 +26,21 @@ function GoogleIcon() {
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded, signUp, setActive } = useSignUp();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
 
-  const handleSignUp = () => {
+  React.useEffect(() => {
+    const timeout = setTimeout(() => setAuthTimedOut(true), 8000);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const handleSignUp = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please fill in all required fields.");
       return;
@@ -42,11 +49,47 @@ export default function SignUpScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
-    router.replace("/(tabs)");
+
+    if (!isLoaded || !signUp) {
+      if (!authTimedOut) {
+        return;
+      }
+
+      Alert.alert(
+        "Authentication not ready",
+        "The auth service is still starting up. Please try again in a few seconds."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signUp.create({
+        emailAddress: email.trim(),
+        password,
+        username: username.trim() || undefined,
+      });
+
+      if (result.status !== "complete") {
+        Alert.alert(
+          "Account created",
+          "Please finish any verification required in your Clerk dashboard before signing in."
+        );
+        return;
+      }
+
+      await setActive?.({ session: result.createdSessionId });
+      router.replace("/(tabs)");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create the account right now.";
+      Alert.alert("Sign up failed", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocial = (_provider: "Google" | "Apple") => {
-    router.replace("/(tabs)");
+    Alert.alert("Coming soon", "Social sign-up can be enabled from your Clerk dashboard.");
   };
 
   return (
@@ -56,16 +99,14 @@ export default function SignUpScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scroll,
+        <View
+          style={[
+            styles.inner,
             {
               paddingTop: Platform.OS === "web" ? 40 : insets.top + 16,
               paddingBottom: insets.bottom + 40,
             },
           ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         >
           {/* Back */}
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -74,14 +115,21 @@ export default function SignUpScreen() {
 
           {/* Logo */}
           <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
-              <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
-            </View>
+            <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
             <Text style={styles.appName}>Create Account</Text>
-            <Text style={styles.tagline}>Join the SDA Community</Text>
+            <Text style={styles.tagline} numberOfLines={1}>Join the Seventh Day Adventist</Text>
           </View>
 
           {/* Social buttons */}
+          {!isLoaded && (
+            <View style={styles.authStatusBanner}>
+              <Ionicons name="time-outline" size={16} color="#FFD60A" />
+              <Text style={styles.authStatusText}>
+                Authentication is starting up. Account creation will be available as soon as Clerk is ready.
+              </Text>
+            </View>
+          )}
+
           <View style={styles.socialGroup}>
             <TouchableOpacity style={styles.appleBtn} onPress={() => handleSocial("Apple")}>
               <Ionicons name="logo-apple" size={20} color="#FFF" />
@@ -182,7 +230,7 @@ export default function SignUpScreen() {
             <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
             <Text style={styles.termsLink}>Privacy Policy</Text>.
           </Text>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -190,7 +238,7 @@ export default function SignUpScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0A0A0A" },
-  scroll: { flexGrow: 1, paddingHorizontal: 24 },
+  inner: { flex: 1, paddingHorizontal: 24 },
   backBtn: {
     width: 36,
     height: 36,
@@ -199,20 +247,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   logoSection: { alignItems: "center", marginBottom: 28 },
-  logoCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  logoImage: { width: 52, height: 52 },
+  logoImage: { width: 76, height: 76 },
   appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginBottom: 5 },
-  tagline: { color: "#8E8E93", fontSize: 14 },
+  tagline: { color: "#8E8E93", fontSize: 12, textAlign: "center" },
   socialGroup: { gap: 12, marginBottom: 22 },
   appleBtn: {
     flexDirection: "row",
@@ -267,6 +304,24 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { color: "#8E8E93", fontSize: 14 },
   footerLink: { color: "#6B7B5A", fontSize: 14, fontWeight: "700" },
+  authStatusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#16161A",
+    borderColor: "#2C2C2E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  authStatusText: {
+    flex: 1,
+    color: "#E5E5EA",
+    fontSize: 13,
+    lineHeight: 18,
+  },
   termsText: {
     color: "#48484A",
     fontSize: 11,

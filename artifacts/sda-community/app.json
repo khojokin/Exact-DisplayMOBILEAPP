@@ -2,7 +2,7 @@
   "expo": {
     "name": "SDA Community",
     "slug": "sda-community",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sda-community",
@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "buildNumber": "98",
       "bundleIdentifier": "com.sdacommunity.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -34,7 +35,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,6 +54,15 @@
       "eas": {
         "projectId": "86a3cc72-d8a2-415c-a2d5-4fd8864f89f1"
       }
-    }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/86a3cc72-d8a2-415c-a2d5-4fd8864f89f1",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "owner": "kojo_toku54"
   }
 }

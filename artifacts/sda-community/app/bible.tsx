@@ -101,7 +101,7 @@ interface BibleVerse {
   text: string;
 }
 
-type View = "books" | "chapters" | "reader";
+type BibleScreenView = "books" | "chapters" | "reader";
 
 const OT_COLOR = "#B8860B";
 const NT_COLOR = "#3B5BDB";
@@ -490,7 +490,7 @@ export default function BibleScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
-  const [view, setView] = useState<View>("books");
+  const [view, setView] = useState<BibleScreenView>("books");
   const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null);
   const [selectedChapter, setSelectedChapter] = useState(1);
 

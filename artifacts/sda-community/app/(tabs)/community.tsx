@@ -16,6 +16,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useVideoPosts } from "@/hooks/useVideoPosts";
 
 interface Post {
   id: string;
@@ -27,6 +28,7 @@ interface Post {
   content: string;
   flair?: string;
   flairColor?: string;
+  mediaType?: "video";
   upvotes: number;
   comments: number;
   userVote: number;
@@ -190,14 +192,15 @@ function PostCard({ post, onVote, onSave }: { post: Post; onVote: (id: string, v
         <View style={styles.postMeta}>
           <AvatarCircle name={post.author} color={color} size={26} />
           <Text style={styles.username}>{post.username}</Text>
-          {post.role && (
-            <View style={[styles.roleBadge, { backgroundColor: post.roleColor + "33", borderColor: post.roleColor + "66" }]}>
-              <Text style={[styles.roleText, { color: post.roleColor }]}>{post.role}</Text>
-            </View>
-          )}
           <Text style={styles.timeAgo}>{post.timeAgo}</Text>
         </View>
         <Text style={styles.postText} numberOfLines={3}>{post.content}</Text>
+        {post.mediaType === "video" && (
+          <View style={styles.videoCardPreview}>
+            <Ionicons name="play-circle" size={26} color="#FFF" />
+            <Text style={styles.videoCardText}>Video post</Text>
+          </View>
+        )}
         {post.flair && (
           <View style={[styles.flairPill, { backgroundColor: post.flairColor + "22", borderColor: post.flairColor + "55" }]}>
             <Text style={[styles.flairText, { color: post.flairColor }]}>{post.flair}</Text>
@@ -305,6 +308,7 @@ export default function CommunityScreen() {
   const [joined, setJoined] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const { videoPosts } = useVideoPosts();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   // Decide once on mount where to inject suggested cards
@@ -325,7 +329,32 @@ export default function CommunityScreen() {
     setJoined((v) => !v);
   }
 
-  const sortedPosts = [...posts].sort((a, b) => {
+  const communityVideoPosts: Post[] = useMemo(
+    () =>
+      videoPosts
+        .filter((vp) => vp.audience === "community" || vp.audience === "everyone")
+        .map((vp) => ({
+          id: `vp-${vp.id}`,
+          author: vp.creator,
+          username: `u/${vp.creator.replace(/\s+/g, "_")}`,
+          role: vp.creatorRole,
+          roleColor: "#6B7B5A",
+          timeAgo: "now",
+          content: vp.caption,
+          flair: vp.audience === "community" ? "Community Video" : "Video",
+          flairColor: vp.audience === "community" ? "#0E7B5B" : "#3B5BDB",
+          mediaType: "video",
+          upvotes: 0,
+          comments: 0,
+          userVote: 0,
+          saved: false,
+        })),
+    [videoPosts]
+  );
+
+  const mergedPosts = useMemo(() => [...communityVideoPosts, ...posts], [communityVideoPosts, posts]);
+
+  const sortedPosts = [...mergedPosts].sort((a, b) => {
     if (activeSort === "Top") return (b.upvotes + b.userVote) - (a.upvotes + a.userVote);
     return 0;
   });
@@ -394,7 +423,7 @@ export default function CommunityScreen() {
                       <Text style={styles.searchSugName}>{person.name}</Text>
                       <Text style={styles.searchSugMeta}>{person.role} · Member</Text>
                     </View>
-                    {person.verified && <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" />}
+                    {person.verified && <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />}
                     <Ionicons name="person-outline" size={14} color="#636366" style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 );
@@ -465,6 +494,22 @@ export default function CommunityScreen() {
           <Text style={[styles.statValue, { color: "#6B7B5A" }]}>Top 5%</Text>
           <Text style={styles.statLabel}>This week</Text>
         </View>
+      </View>
+
+      <View style={styles.joinedWrap}>
+        <Text style={styles.joinedTitle}>Joined Communities</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.joinedRow}>
+          {["SDA Community", "Prayer Warriors", ...Array.from(new Set(videoPosts.filter((v) => v.audience === "community" && v.communityName).map((v) => v.communityName as string)))].map((name) => (
+            <TouchableOpacity
+              key={name}
+              style={styles.joinedChip}
+              onPress={() => router.push({ pathname: "/community-detail", params: { id: name.toLowerCase().replace(/\s+/g, "-") } })}
+            >
+              <Ionicons name="checkmark-circle" size={14} color="#6B7B5A" />
+              <Text style={styles.joinedChipText}>{name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -690,6 +735,21 @@ const styles = StyleSheet.create({
     gap: 6,
     flexDirection: "row",
   },
+  joinedWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  joinedTitle: { color: "#8E8E93", fontSize: 12, fontWeight: "700", marginBottom: 8 },
+  joinedRow: { gap: 8 },
+  joinedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "#162117",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C4930",
+  },
+  joinedChipText: { color: "#B8D9BE", fontSize: 12, fontWeight: "600" },
   sortTab: {
     flexDirection: "row",
     alignItems: "center",
@@ -855,6 +915,19 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 4,
   },
+  videoCardPreview: {
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: "#1B2436",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2A3857",
+    borderRadius: 10,
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  videoCardText: { color: "#C9D9FF", fontSize: 12, fontWeight: "700" },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",

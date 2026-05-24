@@ -20,7 +20,7 @@ const FAITH_ITEMS = [
 
 const MEDIA_ITEMS = [
   { id: "podcast", title: "Podcasts", sub: "Sermons, devotionals & more", icon: "headset-outline", color: "#8B3A8B", route: "/podcast" },
-  { id: "shorts", title: "Shorts", sub: "Quick faith clips to inspire", icon: "play-circle-outline", color: "#C85200", route: "/shorts" },
+  { id: "shorts", title: "Suggested Videos", sub: "Faith videos picked for you", icon: "play-circle-outline", color: "#C85200", route: "/shorts" },
 ];
 
 export default function ResourcesScreen() {
@@ -121,6 +121,24 @@ export default function ResourcesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {isAdmin && (
+          <>
+            <Text style={styles.sectionLabel}>ADMIN</Text>
+            <View style={styles.card}>
+              <TouchableOpacity style={styles.row} onPress={() => router.push("/admin")}>
+                <View style={[styles.iconWrap, { backgroundColor: "#FF453A22" }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color="#FF453A" />
+                </View>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowLabel}>Admin Dashboard</Text>
+                  <Text style={styles.rowSub}>Manage users, content, and app settings</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color="#636366" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionLabel}>QUICK VERSE</Text>
         <View style={styles.verseCard}>

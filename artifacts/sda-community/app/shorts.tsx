@@ -1,14 +1,15 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Platform, StatusBar, Modal, TextInput, Dimensions,
-  Share, Animated, Alert,
+  Share, Animated, Alert, ScrollView,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useVideoPosts, VideoAudience } from "@/hooks/useVideoPosts";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -34,6 +35,7 @@ interface Short {
   audio: string;
   icon: string;
   comments: Comment[];
+  audience?: VideoAudience;
 }
 
 const SHORTS: Short[] = [
@@ -164,33 +166,44 @@ function UploadModal({
   visible,
   onClose,
   insets,
+  onPublish,
 }: {
   visible: boolean;
   onClose: () => void;
   insets: ReturnType<typeof useSafeAreaInsets>;
+  onPublish: (caption: string, audience: VideoAudience) => Promise<void>;
 }) {
   const [caption, setCaption] = useState("");
   const [selectedSource, setSelectedSource] = useState<"camera" | "library" | null>(null);
   const [posting, setPosting] = useState(false);
+  const [audience, setAudience] = useState<VideoAudience>("everyone");
 
-  function handlePost() {
+  async function handlePost() {
     if (!selectedSource) {
       Alert.alert("Select a source", "Please choose to record a video or pick from your library.");
       return;
     }
     setPosting(true);
-    setTimeout(() => {
-      setPosting(false);
-      setCaption("");
-      setSelectedSource(null);
-      onClose();
-      Alert.alert("Posted!", "Your Short has been shared with the community.");
-    }, 1800);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    await onPublish(caption.trim() || "New suggested video", audience);
+    setPosting(false);
+    setCaption("");
+    setSelectedSource(null);
+    setAudience("everyone");
+    onClose();
+    Alert.alert("Posted!", "Your video has been shared with the community.");
+  }
+
+  function handleGoLive() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handleClose();
+    router.push("/meeting");
   }
 
   function handleClose() {
     setCaption("");
     setSelectedSource(null);
+    setAudience("everyone");
     onClose();
   }
 
@@ -202,7 +215,7 @@ function UploadModal({
           <TouchableOpacity onPress={handleClose} style={up.headerBtn}>
             <Ionicons name="close" size={24} color="#FFF" />
           </TouchableOpacity>
-          <Text style={up.headerTitle}>New Short</Text>
+          <Text style={up.headerTitle}>New Video</Text>
           <TouchableOpacity
             style={[up.postBtn, (!selectedSource || posting) && up.postBtnDisabled]}
             onPress={handlePost}
@@ -232,7 +245,7 @@ function UploadModal({
             <View style={up.previewEmpty}>
               <Ionicons name="videocam-outline" size={52} color="#3C3C3E" />
               <Text style={up.previewEmptyTitle}>Add a video</Text>
-              <Text style={up.previewEmptyText}>Record or upload a short video to share with the community</Text>
+              <Text style={up.previewEmptyText}>Record or upload a suggested video to share with the community</Text>
             </View>
           )}
         </View>
@@ -262,6 +275,13 @@ function UploadModal({
               Upload
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={up.sourceBtn} onPress={handleGoLive}>
+            <View style={up.sourceIcon}>
+              <Ionicons name="radio" size={26} color="#FF453A" />
+            </View>
+            <Text style={up.sourceLabel}>Go Live</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Caption */}
@@ -281,17 +301,25 @@ function UploadModal({
 
         {/* Options */}
         <View style={up.optionsSection}>
-          {[
-            { icon: "people-outline", label: "Audience", value: "Everyone" },
-            { icon: "location-outline", label: "Location", value: "Add location" },
-          ].map((opt) => (
-            <View key={opt.label} style={up.optionRow}>
-              <Ionicons name={opt.icon as any} size={20} color="#8E8E93" />
-              <Text style={up.optionLabel}>{opt.label}</Text>
-              <Text style={up.optionValue}>{opt.value}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#3C3C3E" />
-            </View>
-          ))}
+          <View style={up.optionRow}>
+            <Ionicons name="people-outline" size={20} color="#8E8E93" />
+            <Text style={up.optionLabel}>Audience</Text>
+          </View>
+          <View style={up.audienceRow}>
+            {([
+              { id: "everyone", label: "Everyone" },
+              { id: "followers", label: "Followers only" },
+              { id: "community", label: "My Community" },
+            ] as const).map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[up.audiencePill, audience === item.id && up.audiencePillActive]}
+                onPress={() => setAudience(item.id)}
+              >
+                <Text style={[up.audienceText, audience === item.id && up.audienceTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={{ height: insets.bottom + 20 }} />
@@ -309,14 +337,18 @@ export default function ShortsScreen() {
   const bottomOverlayOffset = bottomNavHeight;
   const [liked, setLiked] = useState<Record<string, number>>({});
   const [followed, setFollowed] = useState<Set<string>>(new Set());
+  const [unfollowedDefaults, setUnfollowedDefaults] = useState<Set<string>>(new Set());
   const [showComments, setShowComments] = useState(false);
   const [activeShort, setActiveShort] = useState<Short | null>(null);
   const [playing, setPlaying] = useState<Record<string, boolean>>({});
   const [commentText, setCommentText] = useState("");
   const [extraComments, setExtraComments] = useState<Record<string, Comment[]>>({});
   const [activeTab, setActiveTab] = useState<"following" | "foryou">("foryou");
-  const [showUpload, setShowUpload] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { videoPosts } = useVideoPosts();
   const flatRef = useRef<FlatList>(null);
+  const defaultFollowing = useMemo(() => new Set<string>(["Pastor James Osei", "Grace Adetokunbo"]), []);
 
   function toggleLike(id: string, baseLikes: number) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -335,12 +367,128 @@ export default function ShortsScreen() {
     return liked[id] !== undefined ? liked[id] : baseLikes;
   }
 
+  function isCreatorFollowing(creator: string) {
+    if (followed.has(creator)) return true;
+    if (unfollowedDefaults.has(creator)) return false;
+    return defaultFollowing.has(creator);
+  }
+
   function toggleFollow(creator: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const currentlyFollowing = isCreatorFollowing(creator);
+    if (defaultFollowing.has(creator)) {
+      setUnfollowedDefaults((prev) => {
+        const next = new Set(prev);
+        if (currentlyFollowing) next.add(creator);
+        else next.delete(creator);
+        return next;
+      });
+      return;
+    }
+
     setFollowed((prev) => {
       const next = new Set(prev);
-      next.has(creator) ? next.delete(creator) : next.add(creator);
+      if (currentlyFollowing) next.delete(creator);
+      else next.add(creator);
       return next;
+    });
+  }
+
+  const uploadedShorts = useMemo<Short[]>(
+    () =>
+      videoPosts.map((vp) => ({
+        id: `up-${vp.id}`,
+        creator: vp.creator,
+        creatorRole: vp.creatorRole,
+        creatorColor: vp.creatorColor,
+        description: vp.caption,
+        bg: "#111A2E",
+        accent: "#3B5BDB",
+        likes: 0,
+        commentCount: 0,
+        shares: 0,
+        audio: "Original Audio · SDA Community",
+        icon: "play-outline",
+        comments: [],
+        audience: vp.audience,
+      })),
+    [videoPosts]
+  );
+
+  const combinedShorts = useMemo<Short[]>(() => [...uploadedShorts, ...SHORTS], [uploadedShorts]);
+
+  const filteredShorts = useMemo(() => combinedShorts, [combinedShorts]);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const searchVideos = useMemo(() => {
+    if (!normalizedSearch) return combinedShorts.slice(0, 6);
+    return combinedShorts
+      .filter(
+        (short) =>
+          short.description.toLowerCase().includes(normalizedSearch) ||
+          short.creator.toLowerCase().includes(normalizedSearch)
+      )
+      .slice(0, 10);
+  }, [combinedShorts, normalizedSearch]);
+
+  const searchCreators = useMemo(() => {
+    const creatorMap = new Map<string, { name: string; color: string; count: number }>();
+    combinedShorts.forEach((short) => {
+      const current = creatorMap.get(short.creator);
+      if (current) {
+        creatorMap.set(short.creator, { ...current, count: current.count + 1 });
+      } else {
+        creatorMap.set(short.creator, { name: short.creator, color: short.creatorColor, count: 1 });
+      }
+    });
+    return Array.from(creatorMap.values())
+      .filter((creator) => !normalizedSearch || creator.name.toLowerCase().includes(normalizedSearch))
+      .slice(0, 8);
+  }, [combinedShorts, normalizedSearch]);
+
+  const searchSounds = useMemo(() => {
+    const soundMap = new Map<string, number>();
+    combinedShorts.forEach((short) => {
+      soundMap.set(short.audio, (soundMap.get(short.audio) ?? 0) + 1);
+    });
+    return Array.from(soundMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .filter((sound) => !normalizedSearch || sound.name.toLowerCase().includes(normalizedSearch))
+      .slice(0, 8);
+  }, [combinedShorts, normalizedSearch]);
+
+  const searchHashtags = useMemo(() => {
+    const hashtagMap = new Map<string, number>();
+    combinedShorts.forEach((short) => {
+      const tags = short.description.match(/#[a-z0-9_]+/gi) ?? [];
+      tags.forEach((tag) => {
+        const key = tag.toLowerCase();
+        hashtagMap.set(key, (hashtagMap.get(key) ?? 0) + 1);
+      });
+    });
+    return Array.from(hashtagMap.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .filter((entry) => !normalizedSearch || entry.tag.includes(normalizedSearch))
+      .slice(0, 8);
+  }, [combinedShorts, normalizedSearch]);
+
+  function openSearchResult(shortId: string) {
+    const target = combinedShorts.find((short) => short.id === shortId);
+    if (!target) return;
+
+    const targetTab = isCreatorFollowing(target.creator) ? "following" : "foryou";
+    setActiveTab(targetTab);
+    setShowSearch(false);
+
+    requestAnimationFrame(() => {
+      const resultList = targetTab === "following"
+        ? combinedShorts.filter((short) => isCreatorFollowing(short.creator))
+        : combinedShorts.filter((short) => !isCreatorFollowing(short.creator));
+      const index = resultList.findIndex((short) => short.id === shortId);
+      if (index >= 0) {
+        flatRef.current?.scrollToIndex({ index, animated: true });
+      }
     });
   }
 
@@ -374,7 +522,7 @@ export default function ShortsScreen() {
 
   const renderShort = useCallback(({ item: short }: { item: Short }) => {
     const likedState = isLiked(short.id, short.likes);
-    const isFollowing = followed.has(short.creator);
+    const isFollowing = isCreatorFollowing(short.creator);
     const isPlaying = playing[short.id] ?? false;
     const likeCount = getLikes(short.id, short.likes);
     const commentTotal = short.commentCount + (extraComments[short.id]?.length ?? 0);
@@ -385,7 +533,9 @@ export default function ShortsScreen() {
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={() => togglePlay(short.id)}
+          onPress={() => {
+            togglePlay(short.id);
+          }}
         >
           <View style={[styles.videoBg, { backgroundColor: short.bg }]}>
             <Ionicons name={short.icon as any} size={200} color={short.accent + "15"} />
@@ -453,28 +603,24 @@ export default function ShortsScreen() {
 
         {/* Bottom info over gradient */}
         <View style={[styles.bottomOverlay, { paddingBottom: bottomOverlayOffset }]}> 
-          {/* Creator row */}
           <View style={styles.creatorRow}>
             <TouchableOpacity onPress={() => router.push({ pathname: "/user-profile", params: { name: short.creator } })}>
               <Text style={styles.creatorHandle}>
                 @{short.creator.split(" ").join("").toLowerCase()}
               </Text>
             </TouchableOpacity>
-            {!isFollowing ? (
-              <TouchableOpacity style={styles.followInlineBtn} onPress={() => toggleFollow(short.creator)}>
-                <Text style={styles.followInlineText}>Follow</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.followingBadge}>
-                <Text style={styles.followingBadgeText}>Following</Text>
-              </View>
-            )}
+            <TouchableOpacity
+              style={[styles.followInlineBtn, isFollowing && styles.followInlineBtnFollowing]}
+              onPress={() => toggleFollow(short.creator)}
+            >
+              <Text style={[styles.followInlineText, isFollowing && styles.followInlineTextFollowing]}>
+                {isFollowing ? "Unfollow" : "Follow"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Description */}
           <Text style={styles.shortDesc} numberOfLines={2}>{short.description}</Text>
 
-          {/* Audio row — display only, not a button */}
           <View style={styles.audioRow}>
             <Ionicons name="musical-notes" size={13} color="rgba(255,255,255,0.85)" />
             <Text style={styles.audioName} numberOfLines={1}>{short.audio}</Text>
@@ -483,7 +629,7 @@ export default function ShortsScreen() {
 
       </View>
     );
-  }, [liked, followed, playing, extraComments, bottomOverlayOffset]);
+  }, [liked, followed, unfollowedDefaults, playing, extraComments, bottomOverlayOffset]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
@@ -511,16 +657,16 @@ export default function ShortsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Camera → opens upload modal */}
-        <TouchableOpacity style={styles.topCameraBtn} onPress={() => setShowUpload(true)}>
-          <Ionicons name="camera-outline" size={26} color="#FFF" />
+        {/* Search */}
+        <TouchableOpacity style={styles.topCameraBtn} onPress={() => setShowSearch(true)}>
+          <Ionicons name="search-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       {/* Feed */}
       <FlatList
         ref={flatRef}
-        data={SHORTS}
+        data={filteredShorts}
         keyExtractor={(s) => s.id}
         pagingEnabled
         snapToInterval={SH}
@@ -530,12 +676,91 @@ export default function ShortsScreen() {
         getItemLayout={(_, index) => ({ length: SH, offset: SH * index, index })}
       />
 
-      {/* Upload Modal */}
-      <UploadModal
-        visible={showUpload}
-        onClose={() => setShowUpload(false)}
-        insets={insets}
-      />
+      <Modal visible={showSearch} animationType="slide" onRequestClose={() => setShowSearch(false)}>
+        <View style={sr.container}>
+          <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+          <View style={[sr.header, { paddingTop: Platform.OS === "web" ? 26 : insets.top + 8 }]}>
+            <TouchableOpacity style={sr.backBtn} onPress={() => setShowSearch(false)}>
+              <Ionicons name="chevron-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <View style={sr.searchInputWrap}>
+              <Ionicons name="search-outline" size={16} color="#8E8E93" />
+              <TextInput
+                style={sr.searchInput}
+                placeholder="Search videos, creators, sounds"
+                placeholderTextColor="#636366"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+              />
+            </View>
+          </View>
+
+          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+            <View style={sr.section}>
+              <Text style={sr.sectionTitle}>Videos</Text>
+              {searchVideos.map((item) => (
+                <TouchableOpacity key={item.id} style={sr.videoRow} onPress={() => openSearchResult(item.id)}>
+                  <View style={[sr.videoThumb, { backgroundColor: item.bg }]}>
+                    <Ionicons name={item.icon as any} size={20} color={item.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={sr.videoText}>{item.description}</Text>
+                    <Text style={sr.metaText}>@{item.creator.replace(/\s+/g, "").toLowerCase()}</Text>
+                  </View>
+                  <Text style={sr.metaText}>{fmtCount(item.likes)} likes</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={sr.section}>
+              <Text style={sr.sectionTitle}>Creators</Text>
+              {searchCreators.map((creator) => (
+                <TouchableOpacity
+                  key={creator.name}
+                  style={sr.creatorRow}
+                  onPress={() => {
+                    const firstVideo = combinedShorts.find((short) => short.creator === creator.name);
+                    if (firstVideo) openSearchResult(firstVideo.id);
+                  }}
+                >
+                  <View style={[sr.creatorAvatar, { backgroundColor: creator.color }]}>
+                    <Text style={sr.creatorAvatarText}>{initials(creator.name)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={sr.creatorName}>{creator.name}</Text>
+                    <Text style={sr.metaText}>{creator.count} videos</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#636366" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={sr.section}>
+              <Text style={sr.sectionTitle}>Sounds</Text>
+              {searchSounds.map((sound) => (
+                <View key={sound.name} style={sr.soundRow}>
+                  <Ionicons name="musical-notes-outline" size={16} color="#8E8E93" />
+                  <Text style={sr.soundName} numberOfLines={1}>{sound.name}</Text>
+                  <Text style={sr.metaText}>{sound.count}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={sr.section}>
+              <Text style={sr.sectionTitle}>Hashtags</Text>
+              <View style={sr.hashtagWrap}>
+                {searchHashtags.map((item) => (
+                  <View key={item.tag} style={sr.hashtagChip}>
+                    <Text style={sr.hashtagText}>{item.tag}</Text>
+                    <Text style={sr.hashtagCount}>{item.count}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Bottom nav (same routes as tab app) */}
       <View
@@ -752,11 +977,11 @@ const styles = StyleSheet.create({
     borderRadius: 6, paddingHorizontal: 12, paddingVertical: 4,
   },
   followInlineText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
-  followingBadge: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3,
+  followInlineBtnFollowing: {
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderColor: "rgba(255,255,255,0.65)",
   },
-  followingBadgeText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
+  followInlineTextFollowing: { color: "#FFFFFF" },
 
   shortDesc: { color: "rgba(255,255,255,0.92)", fontSize: 13, lineHeight: 19 },
   audioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -814,6 +1039,96 @@ const cms = StyleSheet.create({
   postBtnText: { color: "#3B9EF9", fontSize: 14, fontWeight: "700" },
 });
 
+const sr = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#2C2C2E",
+  },
+  backBtn: { padding: 4 },
+  searchInputWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  searchInput: { flex: 1, color: "#FFF", fontSize: 14, paddingVertical: 10 },
+  section: { paddingHorizontal: 14, paddingTop: 14 },
+  sectionTitle: {
+    color: "#8E8E93",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    marginBottom: 8,
+    textTransform: "uppercase",
+  },
+  videoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#1C1C1E",
+  },
+  videoThumb: {
+    width: 54,
+    height: 74,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+  metaText: { color: "#8E8E93", fontSize: 12 },
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#1C1C1E",
+  },
+  creatorAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  creatorAvatarText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
+  creatorName: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  soundRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#1C1C1E",
+  },
+  soundName: { flex: 1, color: "#FFF", fontSize: 13 },
+  hashtagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  hashtagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
+  hashtagText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
+  hashtagCount: { color: "#8E8E93", fontSize: 11 },
+});
+
 // Upload modal styles
 const up = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0A0A0A" },
@@ -856,4 +1171,16 @@ const up = StyleSheet.create({
   optionRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#1C1C1E" },
   optionLabel: { flex: 1, color: "#FFF", fontSize: 14 },
   optionValue: { color: "#636366", fontSize: 14 },
+  audienceRow: { flexDirection: "row", gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
+  audiencePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
+  audiencePillActive: { backgroundColor: "#2B3E24", borderColor: "#6B7B5A" },
+  audienceText: { color: "#8E8E93", fontSize: 12, fontWeight: "600" },
+  audienceTextActive: { color: "#D4E9CB" },
 });

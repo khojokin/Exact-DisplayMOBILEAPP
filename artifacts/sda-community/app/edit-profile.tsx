@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,34 +16,109 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSubscription } from "@/hooks/useSubscription";
+
+const NAME_LOCK_KEY = "profile.name.lock.until";
+const USERNAME_LOCK_KEY = "profile.username.lock.until";
+const INITIAL_NAME = "Maria Santos";
+const INITIAL_USERNAME = "mariasantos";
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 120 : insets.bottom + 16;
+  const { isPremium } = useSubscription();
+  const theme = isPremium
+    ? {
+        background: "#F6FBF4",
+        text: "#153221",
+        subtext: "#567263",
+        card: "#FFFFFF",
+        border: "#DCE9D8",
+        accent: "#2E7D4E",
+      }
+    : {
+        background: "#0A0A0A",
+        text: "#FFFFFF",
+        subtext: "#8E8E93",
+        card: "#111111",
+        border: "#2C2C2E",
+        accent: "#4A6741",
+      };
 
-  const [name, setName] = useState("Maria Santos");
+  const [name, setName] = useState(INITIAL_NAME);
+  const [username, setUsername] = useState(INITIAL_USERNAME);
   const [pronouns, setPronouns] = useState("she/her");
   const [bio, setBio] = useState("SDA member since 2019 · Daily Word devotee 🙏");
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("maria.santos@sda.org");
   const [phone, setPhone] = useState("");
   const [privateAccount, setPrivateAccount] = useState(false);
+  const [nameLockedUntil, setNameLockedUntil] = useState<number | null>(null);
+  const [usernameLockedUntil, setUsernameLockedUntil] = useState<number | null>(null);
 
-  function handleDone() {
+  useEffect(() => {
+    (async () => {
+      const [storedNameLock, storedUsernameLock] = await Promise.all([
+        AsyncStorage.getItem(NAME_LOCK_KEY),
+        AsyncStorage.getItem(USERNAME_LOCK_KEY),
+      ]);
+      if (storedNameLock) setNameLockedUntil(Number(storedNameLock));
+      if (storedUsernameLock) setUsernameLockedUntil(Number(storedUsernameLock));
+    })();
+  }, []);
+
+  const now = Date.now();
+  const canEditName = !nameLockedUntil || now >= nameLockedUntil;
+  const canEditUsername = !usernameLockedUntil || now >= usernameLockedUntil;
+
+  function daysRemaining(lockUntil: number | null) {
+    if (!lockUntil) return 0;
+    const diff = lockUntil - Date.now();
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (24 * 60 * 60 * 1000));
+  }
+
+  function handleNameChange(value: string) {
+    if (!canEditName) {
+      Alert.alert("Name locked", `You can change your name again in ${daysRemaining(nameLockedUntil)} day(s).`);
+      return;
+    }
+    setName(value);
+  }
+
+  function handleUsernameChange(value: string) {
+    if (!canEditUsername) {
+      Alert.alert("Username locked", `You can change your username again in ${daysRemaining(usernameLockedUntil)} day(s).`);
+      return;
+    }
+    setUsername(value.replace(/\s+/g, "").toLowerCase());
+  }
+
+  async function handleDone() {
+    const updates: Promise<void>[] = [];
+    const updatedNow = Date.now();
+    if (name.trim() !== INITIAL_NAME && canEditName) {
+      updates.push(AsyncStorage.setItem(NAME_LOCK_KEY, String(updatedNow + 7 * 24 * 60 * 60 * 1000)));
+    }
+    if (username.trim() !== INITIAL_USERNAME && canEditUsername) {
+      updates.push(AsyncStorage.setItem(USERNAME_LOCK_KEY, String(updatedNow + 30 * 24 * 60 * 60 * 1000)));
+    }
+    if (updates.length) await Promise.all(updates);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
-      <View style={[styles.header, { paddingTop: topPad }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}> 
+      <StatusBar barStyle={isPremium ? "dark-content" : "light-content"} backgroundColor={theme.background} />
+      <View style={[styles.header, { paddingTop: topPad, borderBottomColor: theme.border }]}> 
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={[styles.cancelText, { color: theme.subtext }]}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit profile</Text>
-        <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Edit profile</Text>
+        <TouchableOpacity style={[styles.doneBtn, { backgroundColor: theme.accent }]} onPress={handleDone}>
           <Text style={styles.doneBtnText}>Done</Text>
         </TouchableOpacity>
       </View>
@@ -57,7 +132,7 @@ export default function EditProfileScreen() {
           contentContainerStyle={{ paddingBottom: bottomPad }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.avatarSection}>
+          <View style={[styles.avatarSection, { borderBottomColor: theme.border }]}> 
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>MS</Text>
               <View style={styles.cameraOverlay}>
@@ -65,25 +140,46 @@ export default function EditProfileScreen() {
               </View>
             </View>
             <TouchableOpacity onPress={() => Alert.alert("Edit Photo", "Photo upload coming soon.", [{ text: "OK" }])}>
-              <Text style={styles.editPhotoText}>Edit photo</Text>
+              <Text style={[styles.editPhotoText, { color: theme.accent }]}>Edit photo</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.card }]}> 
             <FieldRow
               label="Name"
               value={name}
-              onChangeText={setName}
+              onChangeText={handleNameChange}
               placeholder="Your name"
+              editable={canEditName}
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
+            />
+            <FieldRow
+              label="Username"
+              value={username}
+              onChangeText={handleUsernameChange}
+              placeholder="Username"
+              editable={canEditUsername}
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
             />
             <FieldRow
               label="Pronouns"
               value={pronouns}
               onChangeText={setPronouns}
               placeholder="Add pronouns"
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
               isLast
             />
           </View>
+          <Text style={[styles.limitHint, { color: theme.subtext }]}> 
+            {canEditName
+              ? "Name can be changed once every 7 days."
+              : `Name can be changed again in ${daysRemaining(nameLockedUntil)} day(s).`}
+          </Text>
+          <Text style={[styles.limitHint, { color: theme.subtext }]}> 
+            {canEditUsername
+              ? "Username can be changed once every 30 days."
+              : `Username can be changed again in ${daysRemaining(usernameLockedUntil)} day(s).`}
+          </Text>
 
           <View style={styles.section}>
             <FieldRow
@@ -92,24 +188,27 @@ export default function EditProfileScreen() {
               onChangeText={setBio}
               placeholder="Write a bio..."
               multiline
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
             />
             <FieldRow
               label="Website"
               value={website}
               onChangeText={setWebsite}
               placeholder="Add a link"
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
               isLast
             />
           </View>
 
-          <Text style={styles.sectionHeader}>Contact info</Text>
-          <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: theme.subtext }]}>Contact info</Text>
+          <View style={[styles.section, { backgroundColor: theme.card }]}> 
             <FieldRow
               label="Email"
               value={email}
               onChangeText={setEmail}
               placeholder="Email address"
               keyboardType="email-address"
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
             />
             <FieldRow
               label="Phone"
@@ -117,34 +216,35 @@ export default function EditProfileScreen() {
               onChangeText={setPhone}
               placeholder="Phone number"
               keyboardType="phone-pad"
+              tint={{ text: theme.text, subtext: theme.subtext, border: theme.border }}
               isLast
             />
           </View>
 
-          <Text style={styles.sectionHeader}>Privacy</Text>
-          <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: theme.subtext }]}>Privacy</Text>
+          <View style={[styles.section, { backgroundColor: theme.card }]}> 
             <View style={[styles.fieldRow, styles.fieldRowLast]}>
               <View style={styles.fieldLeft}>
-                <Text style={styles.fieldLabel}>Private account</Text>
-                <Text style={styles.fieldSubtitle}>Only approved followers see your posts</Text>
+                <Text style={[styles.fieldLabel, { color: theme.subtext }]}>Private account</Text>
+                <Text style={[styles.fieldSubtitle, { color: theme.subtext }]}>Only approved followers see your posts</Text>
               </View>
               <Switch
                 value={privateAccount}
                 onValueChange={(v) => { Haptics.selectionAsync(); setPrivateAccount(v); }}
-                trackColor={{ false: "#3A3A3C", true: "#4A6741" }}
+                trackColor={{ false: "#3A3A3C", true: theme.accent }}
                 thumbColor="#FFFFFF"
               />
             </View>
           </View>
 
-          <Text style={styles.sectionHeader}>Personal information</Text>
-          <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: theme.subtext }]}>Personal information</Text>
+          <View style={[styles.section, { backgroundColor: theme.card }]}> 
             <TouchableOpacity style={[styles.fieldRow, styles.fieldRowLast]} activeOpacity={0.7} onPress={() => Alert.alert("Personal Information", "Birthday and gender settings coming soon.", [{ text: "OK" }])}>
               <View style={styles.fieldLeft}>
-                <Text style={styles.fieldLabel}>Personal information</Text>
-                <Text style={styles.fieldSubtitle}>Manage your birthday and gender</Text>
+                <Text style={[styles.fieldLabel, { color: theme.subtext }]}>Personal information</Text>
+                <Text style={[styles.fieldSubtitle, { color: theme.subtext }]}>Manage your birthday and gender</Text>
               </View>
-              <Feather name="chevron-right" size={18} color="#636366" />
+              <Feather name="chevron-right" size={18} color={theme.subtext} />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -161,6 +261,8 @@ function FieldRow({
   isLast,
   multiline,
   keyboardType,
+  editable,
+  tint,
 }: {
   label: string;
   value: string;
@@ -169,19 +271,23 @@ function FieldRow({
   isLast?: boolean;
   multiline?: boolean;
   keyboardType?: "default" | "email-address" | "phone-pad";
+  editable?: boolean;
+  tint?: { text: string; subtext: string; border: string };
 }) {
   return (
-    <View style={[styles.fieldRow, isLast && styles.fieldRowLast]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={[styles.fieldRow, isLast && styles.fieldRowLast, tint && { borderBottomColor: tint.border }]}> 
+      <Text style={[styles.fieldLabel, tint && { color: tint.subtext }]}>{label}</Text>
       <TextInput
-        style={[styles.fieldInput, multiline && { minHeight: 50 }]}
+        style={[styles.fieldInput, multiline && { minHeight: 50 }, tint && { color: tint.text }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#636366"
+        placeholderTextColor={tint?.subtext ?? "#636366"}
         multiline={multiline}
         keyboardType={keyboardType ?? "default"}
         textAlignVertical={multiline ? "top" : "center"}
+        selectionColor={tint?.text}
+        editable={editable}
       />
     </View>
   );
@@ -254,6 +360,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 14,
     overflow: "hidden",
+  },
+  limitHint: {
+    color: "#8E8E93",
+    fontSize: 12,
+    marginTop: 8,
+    marginHorizontal: 20,
   },
   fieldRow: {
     flexDirection: "row",

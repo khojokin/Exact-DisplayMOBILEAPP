@@ -17,8 +17,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationProvider } from "@/hooks/useNotifications";
 import { AIProvider } from "@/hooks/useAI";
+import { SubscriptionProvider } from "@/hooks/useSubscription";
+import { VideoPostsProvider } from "@/hooks/useVideoPosts";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { StripeProvider } from "@stripe/stripe-react-native";
+import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
+import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient();
 
@@ -87,6 +93,34 @@ function RootLayoutNav() {
         name="church-bulletin"
         options={{ headerShown: false, presentation: "card" }}
       />
+      <Stack.Screen
+        name="subscription"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="analytics"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="live"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="shorts"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="shorts-see-all"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="go-live"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="admin"
+        options={{ headerShown: false, presentation: "card" }}
+      />
     </Stack>
   );
 }
@@ -101,7 +135,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
@@ -113,11 +147,27 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
             <KeyboardProvider>
-              <AIProvider>
-                <NotificationProvider>
-                  <RootLayoutNav />
-                </NotificationProvider>
-              </AIProvider>
+              <ClerkProvider
+                publishableKey={CLERK_PUBLISHABLE_KEY}
+                tokenCache={tokenCache}
+                signInUrl="/signin"
+                signUpUrl="/signup"
+                afterSignInUrl="/(tabs)"
+                afterSignUpUrl="/(tabs)"
+                afterSignOutUrl="/signin"
+              >
+                <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+                  <SubscriptionProvider>
+                    <VideoPostsProvider>
+                      <AIProvider>
+                        <NotificationProvider>
+                          <RootLayoutNav />
+                        </NotificationProvider>
+                      </AIProvider>
+                    </VideoPostsProvider>
+                  </SubscriptionProvider>
+                </StripeProvider>
+              </ClerkProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

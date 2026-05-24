@@ -214,9 +214,8 @@ function FollowersModal({
                     <View style={mStyles.userInfo}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                         <Text style={mStyles.userName} numberOfLines={1}>{item.name}</Text>
-                        {item.verified && <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" />}
+                        {item.verified && <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />}
                       </View>
-                      {item.role && <Text style={mStyles.userRole}>{item.role}</Text>}
                     </View>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -275,9 +274,8 @@ function ActionsSheet({
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                 <Text style={aStyles.previewName} numberOfLines={1}>{user.name}</Text>
-                {user.verified && <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" />}
+                {user.verified && <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />}
               </View>
-              {user.role && <Text style={aStyles.previewRole}>{user.role}</Text>}
             </View>
           </View>
           <View style={aStyles.divider} />
@@ -365,7 +363,7 @@ export default function UserProfileScreen() {
           <View style={styles.topCenter}>
             <Text style={styles.topUsername} numberOfLines={1}>@{user.username}</Text>
             {user.verified && (
-              <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" />
+              <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />
             )}
           </View>
           <TouchableOpacity
@@ -404,20 +402,9 @@ export default function UserProfileScreen() {
         <View style={styles.bioSection}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={styles.profileName}>{user.name}</Text>
-            {user.verified && <Ionicons name="checkmark-circle" size={15} color="#3B5BDB" />}
+            {user.verified && <Ionicons name="checkmark-circle" size={15} color="#0E7B5B" />}
           </View>
-          {user.role && (
-            <View style={[styles.roleBadge, { backgroundColor: (user.roleColor ?? "#6B7B5A") + "33" }]}>
-              <Text style={[styles.roleText, { color: user.roleColor ?? "#6B7B5A" }]}>{user.role}</Text>
-            </View>
-          )}
           <Text style={styles.bioText}>{user.bio}</Text>
-          <View style={styles.sdaRow}>
-            <View style={styles.sdaBadge}>
-              <Text style={styles.sdaBadgeText}>SDA</Text>
-            </View>
-            <Text style={styles.sdaMemberText}>Member of SDA Community</Text>
-          </View>
         </View>
 
         {/* Action row — Follow / Message / More (matches own profile button row) */}
@@ -427,7 +414,7 @@ export default function UserProfileScreen() {
             onPress={() => { Haptics.selectionAsync(); setFollowing((v) => !v); }}
           >
             <Text style={[styles.followBtnText, following && styles.followingBtnText]}>
-              {following ? "Following" : "Follow"}
+              {following ? "Unfollow" : "Follow"}
             </Text>
           </TouchableOpacity>
 

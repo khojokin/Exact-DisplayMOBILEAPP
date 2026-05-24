@@ -47,7 +47,7 @@ const TOPICS = [
   { id: "t8", label: "Community", icon: "home-outline", count: "210 posts" },
 ];
 
-const TABS = ["All", "People", "Shorts", "Topics"] as const;
+const TABS = ["All", "People", "Suggested Videos", "Topics"] as const;
 type Tab = typeof TABS[number];
 
 function initials(name: string) {
@@ -179,7 +179,7 @@ export default function SearchScreen() {
 
   // Decide what to show
   const showPeople = activeTab === "All" || activeTab === "People";
-  const showShorts = activeTab === "All" || activeTab === "Shorts";
+  const showShorts = activeTab === "All" || activeTab === "Suggested Videos";
   const showTopics = activeTab === "All" || activeTab === "Topics";
 
   return (
@@ -196,7 +196,7 @@ export default function SearchScreen() {
           <TextInput
             ref={inputRef}
             style={s.searchInput}
-            placeholder="Search people, shorts, topics..."
+            placeholder="Search people, videos, topics..."
             placeholderTextColor="#636366"
             value={query}
             onChangeText={setQuery}
@@ -260,12 +260,12 @@ export default function SearchScreen() {
         )}
 
         {/* Shorts */}
-        {showShorts && (filteredShorts.length > 0 || (hasQuery && activeTab === "Shorts")) && (
+        {showShorts && (filteredShorts.length > 0 || (hasQuery && activeTab === "Suggested Videos")) && (
           <View style={s.section}>
-            {activeTab === "All" && <Text style={s.sectionTitle}>Shorts</Text>}
+            {activeTab === "All" && <Text style={s.sectionTitle}>Suggested Videos</Text>}
             {filteredShorts.length === 0 ? (
               <View style={s.emptyInline}>
-                <Text style={s.emptyInlineText}>No shorts match "{query}"</Text>
+                <Text style={s.emptyInlineText}>No suggested videos match "{query}"</Text>
               </View>
             ) : (
               <ScrollView

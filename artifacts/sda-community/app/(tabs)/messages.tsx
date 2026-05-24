@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +29,9 @@ interface Conversation {
   typing?: boolean;
   delivered?: boolean;
   read?: boolean;
+  pinned?: boolean;
+  muted?: boolean;
+  archived?: boolean;
 }
 
 const CONVERSATIONS: Conversation[] = [
@@ -72,19 +76,84 @@ function AvatarCircle({ name, color, size = 44, online = false }: { name: string
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
+  const [conversations, setConversations] = useState<Conversation[]>(CONVERSATIONS);
   const [searchText, setSearchText] = useState("");
   const [composeVisible, setComposeVisible] = useState(false);
   const [composeSearch, setComposeSearch] = useState("");
+  const [actionsVisible, setActionsVisible] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const filtered = CONVERSATIONS.filter((c) =>
-    c.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    c.lastMessage.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const activeConversation = selectedConversation
+    ? conversations.find((c) => c.id === selectedConversation.id) ?? selectedConversation
+    : null;
+
+  const conversationActions = [
+    {
+      id: "pin",
+      label: activeConversation?.pinned ? "Unpin chat" : "Pin chat",
+      icon: activeConversation?.pinned ? ("pin" as const) : ("pin-outline" as const),
+    },
+    { id: "archive", label: "Archive", icon: "archive-outline" as const },
+    {
+      id: "mute",
+      label: activeConversation?.muted ? "Unmute" : "Mute",
+      icon: activeConversation?.muted
+        ? ("notifications" as const)
+        : ("notifications-off-outline" as const),
+    },
+    { id: "delete", label: "Delete chat", icon: "trash-outline" as const, destructive: true },
+  ];
+
+  const filtered = conversations
+    .filter((c) => !c.archived)
+    .filter((c) =>
+      c.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      c.lastMessage.toLowerCase().includes(searchText.toLowerCase())
+    )
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
 
   const composeFiltered = NEW_MSG_PEOPLE.filter((p) =>
     composeSearch === "" || p.name.toLowerCase().includes(composeSearch.toLowerCase())
   );
+
+  function openConversationActions(conversation: Conversation) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedConversation(conversation);
+    setActionsVisible(true);
+  }
+
+  function runConversationAction(actionId: string) {
+    if (!selectedConversation) return;
+
+    if (actionId === "delete") {
+      Alert.alert("Delete chat?", `Delete ${selectedConversation.name} chat permanently?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            setConversations((prev) => prev.filter((c) => c.id !== selectedConversation.id));
+            setActionsVisible(false);
+          },
+        },
+      ]);
+      return;
+    }
+
+    Haptics.selectionAsync();
+    setActionsVisible(false);
+    setConversations((prev) =>
+      prev.map((conversation) => {
+        if (conversation.id !== selectedConversation.id) return conversation;
+        if (actionId === "pin") return { ...conversation, pinned: !conversation.pinned };
+        if (actionId === "mute") return { ...conversation, muted: !conversation.muted };
+        if (actionId === "archive") return { ...conversation, archived: true };
+        return conversation;
+      })
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -123,6 +192,8 @@ export default function MessagesScreen() {
               Haptics.selectionAsync();
               router.push({ pathname: "/dm/[id]", params: { id: item.id } });
             }}
+            onLongPress={() => openConversationActions(item)}
+            delayLongPress={260}
           >
             <View style={styles.avatarWrap}>
               <AvatarCircle name={item.name} color={item.color} online={item.online} />
@@ -137,10 +208,16 @@ export default function MessagesScreen() {
                 <View style={styles.nameRow}>
                   <Text style={[styles.convoName, item.unread > 0 && styles.convoNameBold]}>{item.name}</Text>
                   {item.verified && (
-                    <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" style={{ marginLeft: 3 }} />
+                    <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" style={{ marginLeft: 3 }} />
+                  )}
+                  {item.pinned && (
+                    <Ionicons name="pin" size={12} color="#8E8E93" style={{ marginLeft: 6 }} />
                   )}
                 </View>
-                <Text style={styles.convoTime}>{item.timeAgo}</Text>
+                <View style={styles.metaRow}>
+                  {item.muted && <Ionicons name="notifications-off" size={12} color="#8E8E93" />}
+                  <Text style={styles.convoTime}>{item.timeAgo}</Text>
+                </View>
               </View>
               <View style={styles.convoBottom}>
                 {item.typing ? (
@@ -153,12 +230,12 @@ export default function MessagesScreen() {
                 {/* Blue ticks for read receipts on sent messages */}
                 {!item.unread && item.read && (
                   <View style={styles.ticksRow}>
-                    <Ionicons name="checkmark-done" size={14} color="#3B5BDB" />
+                    <Ionicons name="checkmark-done" size={14} color="#111111" />
                   </View>
                 )}
                 {!item.unread && !item.read && item.delivered !== false && (
                   <View style={styles.ticksRow}>
-                    <Ionicons name="checkmark-done" size={14} color="#636366" />
+                    <Ionicons name="checkmark-done" size={14} color="#111111" />
                   </View>
                 )}
               </View>
@@ -219,7 +296,7 @@ export default function MessagesScreen() {
                   <View style={styles.nameRow}>
                     <Text style={styles.composePersonName}>{person.name}</Text>
                     {person.verified && (
-                      <Ionicons name="checkmark-circle" size={15} color="#3B5BDB" style={{ marginLeft: 4 }} />
+                      <Ionicons name="checkmark-circle" size={15} color="#0E7B5B" style={{ marginLeft: 4 }} />
                     )}
                   </View>
                   <Text style={styles.composePersonSub}>SDA Community member</Text>
@@ -229,6 +306,40 @@ export default function MessagesScreen() {
             ))}
           </ScrollView>
         </View>
+      </Modal>
+
+      <Modal visible={actionsVisible} transparent animationType="fade" onRequestClose={() => setActionsVisible(false)}>
+        <TouchableOpacity
+          style={styles.actionBackdrop}
+          activeOpacity={1}
+          onPress={() => setActionsVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.actionSheet}>
+            <View style={styles.actionHeader}>
+              <Text style={styles.actionTitle}>{selectedConversation?.name ?? "Chat"}</Text>
+              <Text style={styles.actionSub}>Message actions</Text>
+            </View>
+            {conversationActions.map((action) => (
+              <TouchableOpacity
+                key={action.id}
+                style={styles.actionRow}
+                onPress={() => runConversationAction(action.id)}
+              >
+                <Ionicons
+                  name={action.icon}
+                  size={18}
+                  color={action.destructive ? "#FF453A" : "#FFFFFF"}
+                />
+                <Text style={[styles.actionText, action.destructive && styles.actionTextDanger]}>
+                  {action.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.actionCancel} onPress={() => setActionsVisible(false)}>
+              <Text style={styles.actionCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -282,6 +393,7 @@ const styles = StyleSheet.create({
   unreadText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
   convoContent: { flex: 1 },
   convoTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   nameRow: { flexDirection: "row", alignItems: "center" },
   convoName: { color: "#AEAEB2", fontSize: 15, fontWeight: "500" },
   convoNameBold: { color: "#FFFFFF", fontWeight: "700" },
@@ -325,4 +437,44 @@ const styles = StyleSheet.create({
   composePersonInfo: { flex: 1 },
   composePersonName: { color: "#FFF", fontSize: 15, fontWeight: "600" },
   composePersonSub: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
+  actionBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
+    paddingHorizontal: 12,
+    paddingBottom: 18,
+  },
+  actionSheet: {
+    backgroundColor: "#1C1C1E",
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
+  actionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#2C2C2E",
+  },
+  actionTitle: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  actionSub: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#2C2C2E",
+  },
+  actionText: { color: "#FFF", fontSize: 15, fontWeight: "500" },
+  actionTextDanger: { color: "#FF453A" },
+  actionCancel: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  actionCancelText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
 });

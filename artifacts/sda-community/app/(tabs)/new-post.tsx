@@ -16,9 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useVideoPosts, VideoAudience } from "@/hooks/useVideoPosts";
 
 const POST_TYPES = [
   { id: "photo", label: "Photo", icon: "image" as const },
+  { id: "video", label: "Video", icon: "video" as const },
 ];
 
 const TAGGABLE = [
@@ -55,7 +57,9 @@ export default function NewPostScreen() {
   const [selectedType, setSelectedType] = useState("photo");
   const [postText, setPostText] = useState("");
   const [selectedImage, setSelectedImage] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [audience, setAudience] = useState<VideoAudience>("everyone");
   const [location, setLocation] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [locationFocused, setLocationFocused] = useState(false);
@@ -65,6 +69,7 @@ export default function NewPostScreen() {
   const [hashtagQuery, setHashtagQuery] = useState("");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { addNotification } = useNotifications();
+  const { addVideoPost } = useVideoPosts();
   const inputRef = useRef<TextInput>(null);
 
   const placeholder = "Write a caption...";
@@ -103,9 +108,9 @@ export default function NewPostScreen() {
     inputRef.current?.focus();
   }
 
-  function handlePost() {
-    if (!selectedImage) {
-      Alert.alert("Add image", "Please upload a photo before posting.");
+  async function handlePost() {
+    if (!selectedImage && !selectedVideo) {
+      Alert.alert("Add media", "Please upload a photo or video before posting.");
       return;
     }
     if (!postText.trim()) {
@@ -119,16 +124,32 @@ export default function NewPostScreen() {
       body: caption.slice(0, 80) + (caption.length > 80 ? "..." : ""),
       type: "announcement",
     });
+
+    const mediaType = selectedVideo ? "video" : "photo";
+
+    if (mediaType === "video") {
+      await addVideoPost({
+        creator: "Maria Santos",
+        creatorRole: "Member",
+        creatorColor: "#4A6741",
+        caption,
+        audience,
+        communityName: audience === "community" ? "SDA Community" : undefined,
+      });
+    }
+
     setPostText("");
     setSelectedType("photo");
     setLocation("");
     setSelectedImage(false);
+    setSelectedVideo(false);
     router.replace({
       pathname: "/(tabs)",
       params: {
         newPostId: Date.now().toString(),
         newPostCaption: caption,
-        newPostImage: "banner",
+        newPostImage: mediaType === "photo" ? "banner" : "",
+        newPostType: mediaType,
       },
     });
   }
@@ -136,16 +157,24 @@ export default function NewPostScreen() {
   function handleMediaPick(type: "photo" | "video" | "audio") {
     setSelectedType(type);
     Haptics.selectionAsync();
-    if (type !== "photo") {
-      Alert.alert("Photos only", "Home feed posts are image + caption like Instagram.");
-      return;
-    }
+    const isVideo = type === "video";
     Alert.alert(
-      "Upload Photo",
-      "Choose image source",
+      isVideo ? "Upload Video" : "Upload Photo",
+      isVideo ? "Choose video source" : "Choose image source",
       [
-        { text: "Take Photo", onPress: () => setSelectedImage(true) },
-        { text: "Choose from Library", onPress: () => setSelectedImage(true) },
+        { text: isVideo ? "Record Video" : "Take Photo", onPress: () => { setSelectedImage(!isVideo); setSelectedVideo(isVideo); } },
+        { text: "Choose from Library", onPress: () => { setSelectedImage(!isVideo); setSelectedVideo(isVideo); } },
+        ...(isVideo
+          ? [
+              {
+                text: "Go Live",
+                onPress: () => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push("/meeting");
+                },
+              },
+            ]
+          : []),
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -216,7 +245,7 @@ export default function NewPostScreen() {
                   <Text style={styles.suggestAvatarText}>{t.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</Text>
                 </View>
                 <Text style={styles.suggestName}>{t.name}</Text>
-                {t.verified && <Ionicons name="checkmark-circle" size={14} color="#3B5BDB" />}
+                {t.verified && <Ionicons name="checkmark-circle" size={14} color="#0E7B5B" />}
               </TouchableOpacity>
             ))}
           </View>
@@ -286,14 +315,19 @@ export default function NewPostScreen() {
           )}
         </View>
 
-        {(selectedType === "photo" || selectedImage) && (
-          <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick("photo")}>
+        {(selectedType === "photo" || selectedType === "video" || selectedImage || selectedVideo) && (
+          <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick(selectedType as "photo" | "video") }>
             {selectedImage ? (
               <Image source={require("@/assets/images/banner.png")} style={styles.uploadPreview} resizeMode="cover" />
+            ) : selectedVideo ? (
+              <View style={styles.videoPreview}>
+                <Ionicons name="play-circle" size={42} color="#FFFFFF" />
+                <Text style={styles.videoPreviewText}>Video ready</Text>
+              </View>
             ) : (
               <>
-                <Ionicons name="image-outline" size={40} color="#3C3C3E" />
-                <Text style={styles.mediaPlaceholderText}>Tap to upload photo</Text>
+                <Ionicons name={selectedType === "video" ? "videocam-outline" : "image-outline"} size={40} color="#3C3C3E" />
+                <Text style={styles.mediaPlaceholderText}>Tap to upload {selectedType}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -306,7 +340,38 @@ export default function NewPostScreen() {
             <Ionicons name="image-outline" size={22} color={selectedType === "photo" ? "#6B7B5A" : "#8E8E93"} />
             <Text style={[styles.mediaActionText, selectedType === "photo" && { color: "#6B7B5A" }]}>Photo</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.mediaActionBtn} onPress={() => handleMediaPick("video")}>
+            <Ionicons name="videocam-outline" size={22} color={selectedType === "video" ? "#6B7B5A" : "#8E8E93"} />
+            <Text style={[styles.mediaActionText, selectedType === "video" && { color: "#6B7B5A" }]}>Video</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.mediaActionBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/meeting");
+            }}
+          >
+            <Ionicons name="radio-outline" size={22} color="#FF453A" />
+            <Text style={[styles.mediaActionText, { color: "#FF453A" }]}>Go Live</Text>
+          </TouchableOpacity>
         </View>
+        {selectedType === "video" && (
+          <View style={styles.audienceRow}>
+            {([
+              { id: "everyone", label: "Everyone" },
+              { id: "followers", label: "Followers only" },
+              { id: "community", label: "My Community" },
+            ] as const).map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.audiencePill, audience === item.id && styles.audiencePillActive]}
+                onPress={() => setAudience(item.id)}
+              >
+                <Text style={[styles.audienceText, audience === item.id && styles.audienceTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <TouchableOpacity style={styles.visibilityRow} onPress={() => { Haptics.selectionAsync(); setVisible((v) => !v); }}>
           <Ionicons name={visible ? "eye-outline" : "eye-off-outline"} size={18} color={visible ? "#6B7B5A" : "#8E8E93"} />
           <Text style={[styles.visibilityText, visible && { color: "#6B7B5A" }]}>
@@ -385,11 +450,21 @@ const styles = StyleSheet.create({
   locationSugRowActive: { backgroundColor: "#6B7B5A11" },
   locationSugText: { flex: 1, color: "#FFFFFFCC", fontSize: 14 },
   mediaPlaceholder: {
-    margin: 16, height: 160, backgroundColor: "#1C1C1E", borderRadius: 12,
+    margin: 16, width: "auto", aspectRatio: 4 / 5, backgroundColor: "#1C1C1E", borderRadius: 12,
     alignItems: "center", justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth, borderColor: "#2C2C2E", borderStyle: "dashed", gap: 8,
   },
   uploadPreview: { width: "100%", height: "100%", borderRadius: 12 },
+  videoPreview: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+    backgroundColor: "#1B2230",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  videoPreviewText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
   mediaPlaceholderText: { color: "#636366", fontSize: 14 },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#2C2C2E",
@@ -398,6 +473,18 @@ const styles = StyleSheet.create({
   mediaActions: { flexDirection: "row", gap: 20, marginBottom: 12 },
   mediaActionBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
   mediaActionText: { color: "#8E8E93", fontSize: 13 },
+  audienceRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  audiencePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2C2C2E",
+  },
+  audiencePillActive: { backgroundColor: "#2B3E24", borderColor: "#6B7B5A" },
+  audienceText: { color: "#8E8E93", fontSize: 12, fontWeight: "600" },
+  audienceTextActive: { color: "#D4E9CB" },
   visibilityRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 },
   visibilityText: { color: "#8E8E93", fontSize: 13 },
 });
