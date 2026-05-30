@@ -153,29 +153,29 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
-            <KeyboardProvider>
-              <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-                <ClerkLoaded>
-                <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
-                  <SubscriptionProvider>
-                    <VideoPostsProvider>
-                      <AIProvider>
-                        <NotificationProvider>
-                          <RootLayoutNav />
-                        </NotificationProvider>
-                      </AIProvider>
-                    </VideoPostsProvider>
-                  </SubscriptionProvider>
-                </StripeProviderWrapper>
-                </ClerkLoaded>
-              </ClerkProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </ErrorBoundary>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+              <KeyboardProvider>
+                <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+                  <ClerkLoaded>
+                    <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
+                      <SubscriptionProvider>
+                        <VideoPostsProvider>
+                          <AIProvider>
+                            <NotificationProvider>
+                              <RootLayoutNav />
+                            </NotificationProvider>
+                          </AIProvider>
+                        </VideoPostsProvider>
+                      </SubscriptionProvider>
+                    </StripeProviderWrapper>
+                  </ClerkLoaded>
+                </ClerkProvider>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>
   );
