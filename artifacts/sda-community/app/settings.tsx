@@ -103,7 +103,7 @@ export default function SettingsScreen() {
         break;
       case "privacy": router.push("/privacy-settings"); break;
       case "accessibility":
-        Alert.alert("Accessibility", "Font size and display options will be available in a future update.");
+        router.push("/accessibility");
         break;
       case "language": router.push("/language-settings"); break;
       case "goPremium":

@@ -43,6 +43,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<{ fullName: string; username?: string; bio?: string; avatarUrl?: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -55,9 +57,12 @@ export default function ProfileScreen() {
 
     setError(null);
     try {
-      const [profileRow, userPosts] = await Promise.all([
+      const { supabase } = await import("@/lib/supabase");
+      const [profileRow, userPosts, followersRes, followingRes] = await Promise.all([
         fetchProfileById(userId),
         fetchPostsByUserId(userId, 120),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
       ]);
 
       setProfile(
@@ -76,6 +81,8 @@ export default function ProfileScreen() {
             }
       );
       setPosts(userPosts);
+      if (followersRes.count != null) setFollowerCount(followersRes.count);
+      if (followingRes.count != null) setFollowingCount(followingRes.count);
     } catch (loadError: any) {
       setError(loadError?.message ?? "Unable to load your profile.");
     } finally {
@@ -126,11 +133,11 @@ export default function ProfileScreen() {
               <Text style={[styles.statLabel, { color: t.subtext }]}>Posts</Text>
             </View>
             <TouchableOpacity style={styles.statBlock} onPress={() => router.push({ pathname: "/followers", params: { type: "followers" } })}>
-              <Text style={styles.statValue}>-</Text>
+              <Text style={styles.statValue}>{followerCount ?? "-"}</Text>
               <Text style={[styles.statLabel, { color: t.subtext }]}>Followers</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.statBlock} onPress={() => router.push({ pathname: "/followers", params: { type: "following" } })}>
-              <Text style={styles.statValue}>-</Text>
+              <Text style={styles.statValue}>{followingCount ?? "-"}</Text>
               <Text style={[styles.statLabel, { color: t.subtext }]}>Following</Text>
             </TouchableOpacity>
           </View>

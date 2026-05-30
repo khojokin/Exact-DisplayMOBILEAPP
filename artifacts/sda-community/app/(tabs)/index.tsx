@@ -362,9 +362,9 @@ function PostActionsSheet({
 
   const actions = isOwnPost
     ? [
-        { label: "Edit Post", icon: "pencil-outline", color: "#FFF", onPress: () => { onClose(); Alert.alert("Edit Post", "Post editor would open here."); } },
+        { label: "Edit Post", icon: "pencil-outline", color: "#FFF", onPress: () => { onClose(); router.push({ pathname: "/new-post", params: { editId: post.id } } as any); } },
         { label: "Delete Post", icon: "trash-outline", color: "#FF453A", onPress: () => { onClose(); Alert.alert("Delete Post", "Are you sure you want to delete this post?", [{ text: "Delete", style: "destructive" }, { text: "Cancel", style: "cancel" }]); } },
-        { label: "Copy Link", icon: "link-outline", color: "#FFF", onPress: () => { onClose(); Alert.alert("Copied", "Post link copied to clipboard."); } },
+        { label: "Copy Link", icon: "link-outline", color: "#FFF", onPress: async () => { onClose(); const link = `https://sdacommunity.app/post/${post.id}`; if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator?.clipboard) { await navigator.clipboard.writeText(link).catch(() => {}); Alert.alert("Copied", "Post link copied to clipboard."); } else { await Share.share({ message: link }); } } },
         { label: "Share", icon: "share-outline", color: "#FFF", onPress: () => { onClose(); Share.share({ message: `Check out this post by ${post.author} on SDA Community:\n\n"${post.content}"` }); } },
       ]
     : [
@@ -375,7 +375,7 @@ function PostActionsSheet({
           onPress: () => { onFollow(); onClose(); },
         },
         { label: "Send Message", icon: "chatbubble-outline", color: "#FFF", onPress: () => { onClose(); router.push({ pathname: "/dm/[id]", params: { id: "1" } }); } },
-        { label: "Copy Link", icon: "link-outline", color: "#FFF", onPress: () => { onClose(); Alert.alert("Copied", "Post link copied to clipboard."); } },
+        { label: "Copy Link", icon: "link-outline", color: "#FFF", onPress: async () => { onClose(); const link = `https://sdacommunity.app/post/${post.id}`; if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator?.clipboard) { await navigator.clipboard.writeText(link).catch(() => {}); Alert.alert("Copied", "Post link copied to clipboard."); } else { await Share.share({ message: link }); } } },
         { label: "Share", icon: "share-outline", color: "#FFF", onPress: () => { onClose(); Share.share({ message: `Check out this post by ${post.author} on SDA Community:\n\n"${post.content}"` }); } },
         { label: "Not Interested", icon: "eye-off-outline", color: "#FFF", onPress: () => { onHide(); onClose(); } },
         { label: "Mute", icon: "volume-mute-outline", color: "#FFF", onPress: () => { onClose(); Alert.alert("Muted", `You won't see posts from ${post.author.split(" ")[0]} in your feed.`); } },

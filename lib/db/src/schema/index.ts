@@ -293,3 +293,42 @@ export const aiChatsTable = pgTable("ai_chats", {
 export const insertAIChatSchema = createInsertSchema(aiChatsTable).omit({ id: true, createdAt: true });
 export type InsertAIChat = z.infer<typeof insertAIChatSchema>;
 export type AIChat = typeof aiChatsTable.$inferSelect;
+
+// ── Announcements ─────────────────────────────────────────────────────────────
+
+export const announcementsTable = pgTable("announcements", {
+  id:          serial("id").primaryKey(),
+  title:       varchar("title", { length: 200 }).notNull(),
+  body:        text("body").notNull(),
+  createdById: varchar("created_by_id", { length: 255 }),
+  isActive:    boolean("is_active").default(true).notNull(),
+  isPinned:    boolean("is_pinned").default(false).notNull(),
+  createdAt:   timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcementsTable).omit({ id: true, createdAt: true });
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcementsTable.$inferSelect;
+
+// ── User bans ─────────────────────────────────────────────────────────────────
+
+export const userBansTable = pgTable("user_bans", {
+  id:         serial("id").primaryKey(),
+  userId:     integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  bannedById: integer("banned_by_id").references(() => usersTable.id),
+  reason:     text("reason"),
+  expiresAt:  timestamp("expires_at"),
+  createdAt:  timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── App activity log ──────────────────────────────────────────────────────────
+
+export const activityLogTable = pgTable("activity_log", {
+  id:        serial("id").primaryKey(),
+  actorId:   varchar("actor_id", { length: 255 }),
+  action:    varchar("action", { length: 100 }).notNull(),
+  targetType:varchar("target_type", { length: 50 }),
+  targetId:  varchar("target_id", { length: 255 }),
+  metadata:  text("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
