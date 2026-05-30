@@ -1,10 +1,17 @@
 import { supabase } from "@/lib/supabase";
 
 export async function followUser(followerId: string, followingId: string): Promise<void> {
-  const { error } = await supabase
+  const { error: followError } = await supabase
     .from("follows")
     .insert({ follower_id: followerId, following_id: followingId });
-  if (error && error.code !== "23505") throw error;
+  if (followError && followError.code !== "23505") throw followError;
+
+  await supabase.from("notifications").insert({
+    user_id: followingId,
+    actor_id: followerId,
+    type: "follow",
+    is_read: false,
+  });
 }
 
 export async function unfollowUser(followerId: string, followingId: string): Promise<void> {
@@ -14,6 +21,13 @@ export async function unfollowUser(followerId: string, followingId: string): Pro
     .eq("follower_id", followerId)
     .eq("following_id", followingId);
   if (error) throw error;
+
+  await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", followingId)
+    .eq("actor_id", followerId)
+    .eq("type", "follow");
 }
 
 export async function getFollowingIds(userId: string): Promise<string[]> {
