@@ -22,6 +22,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { fetchPostsByUserId, type FeedPost } from "@/lib/posts";
 import { fetchProfileByNameOrId, fetchSuggestedProfiles, type AppProfile } from "@/lib/profiles";
 import { ensureDirectConversation } from "@/lib/chat";
+import { followUser, unfollowUser, checkIsFollowing, getFollowingIds } from "@/lib/follows";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_SIZE = (SCREEN_W - 4) / 3;
@@ -44,9 +45,13 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
+  const [followInProgress, setFollowInProgress] = useState(false);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<AppProfile | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [suggested, setSuggested] = useState<AppProfile[]>([]);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,14 +78,27 @@ export default function UserProfileScreen() {
         return;
       }
 
-      const [gridPosts, suggestedProfiles] = await Promise.all([
+      const excludeIds = [found.id, userId ?? ""].filter(Boolean);
+      const [gridPosts, suggestedProfiles, isAlreadyFollowing, followerRes] = await Promise.all([
         fetchPostsByUserId(found.id, 120),
-        fetchSuggestedProfiles([found.id, userId ?? ""].filter(Boolean), 12),
+        fetchSuggestedProfiles(excludeIds, 12),
+        userId ? checkIsFollowing(userId, found.id) : Promise.resolve(false),
+        (await import("@/lib/supabase")).supabase
+          .from("follows")
+          .select("*", { count: "exact", head: true })
+          .eq("following_id", found.id),
       ]);
 
       setProfile(found);
       setPosts(gridPosts);
       setSuggested(suggestedProfiles);
+      setFollowing(isAlreadyFollowing);
+      if (followerRes.count != null) setFollowerCount(followerRes.count);
+
+      if (gridPosts.length === 0 && userId) {
+        const alreadyFollowingIds = await getFollowingIds(userId);
+        setFollowedIds(new Set(alreadyFollowingIds));
+      }
     } catch (loadError: any) {
       setError(loadError?.message ?? "Unable to load profile.");
     } finally {
@@ -106,6 +124,54 @@ export default function UserProfileScreen() {
       router.push({ pathname: "/dm/[id]", params: { id: conversationId } });
     } catch {
       router.push({ pathname: "/dm/[id]", params: { id: profile.id } });
+    }
+  }
+
+  async function handleToggleMainFollow() {
+    if (!userId || !profile || followInProgress) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFollowInProgress(true);
+    const wasFollowing = following;
+    setFollowing(!wasFollowing);
+    setFollowerCount((c) => c != null ? Math.max(0, c + (wasFollowing ? -1 : 1)) : c);
+    try {
+      if (wasFollowing) {
+        await unfollowUser(userId, profile.id);
+      } else {
+        await followUser(userId, profile.id);
+      }
+    } catch {
+      setFollowing(wasFollowing);
+      setFollowerCount((c) => c != null ? Math.max(0, c + (wasFollowing ? 1 : -1)) : c);
+    } finally {
+      setFollowInProgress(false);
+    }
+  }
+
+  async function handleToggleSuggestedFollow(profileId: string) {
+    if (!userId || followingInProgress.has(profileId)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFollowingInProgress((prev) => new Set(prev).add(profileId));
+    const wasFollowing = followedIds.has(profileId);
+    setFollowedIds((prev) => {
+      const next = new Set(prev);
+      wasFollowing ? next.delete(profileId) : next.add(profileId);
+      return next;
+    });
+    try {
+      if (wasFollowing) {
+        await unfollowUser(userId, profileId);
+      } else {
+        await followUser(userId, profileId);
+      }
+    } catch {
+      setFollowedIds((prev) => {
+        const next = new Set(prev);
+        wasFollowing ? next.add(profileId) : next.delete(profileId);
+        return next;
+      });
+    } finally {
+      setFollowingInProgress((prev) => { const next = new Set(prev); next.delete(profileId); return next; });
     }
   }
 
@@ -145,7 +211,7 @@ export default function UserProfileScreen() {
                   <Text style={styles.statLabel}>Posts</Text>
                 </View>
                 <View style={styles.statBlock}>
-                  <Text style={styles.statValue}>-</Text>
+                  <Text style={styles.statValue}>{followerCount ?? "-"}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
                 </View>
                 <View style={styles.statBlock}>
@@ -162,8 +228,9 @@ export default function UserProfileScreen() {
 
             <View style={styles.actionRow}>
               <TouchableOpacity
-                style={[styles.followBtn, following && styles.followingBtn]}
-                onPress={() => { Haptics.selectionAsync(); setFollowing((v) => !v); }}
+                style={[styles.followBtn, following && styles.followingBtn, followInProgress && { opacity: 0.6 }]}
+                onPress={handleToggleMainFollow}
+                disabled={followInProgress}
               >
                 <Text style={[styles.followBtnText, following && styles.followingBtnText]}>
                   {following ? "Following" : "Follow"}
@@ -212,10 +279,17 @@ export default function UserProfileScreen() {
                           <Text style={styles.suggestHandle} numberOfLines={1}>{item.username ? `@${item.username}` : "Member"}</Text>
                         </View>
                         <Pressable
-                          style={styles.suggestFollowBtn}
-                          onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/user-profile", params: { id: item.id } }); }}
+                          style={[
+                            styles.suggestFollowBtn,
+                            followedIds.has(item.id) && styles.suggestFollowingBtn,
+                            followingInProgress.has(item.id) && { opacity: 0.6 },
+                          ]}
+                          onPress={() => handleToggleSuggestedFollow(item.id)}
+                          disabled={followingInProgress.has(item.id)}
                         >
-                          <Text style={styles.suggestFollowText}>Follow</Text>
+                          <Text style={[styles.suggestFollowText, followedIds.has(item.id) && styles.suggestFollowingText]}>
+                            {followedIds.has(item.id) ? "Following" : "Follow"}
+                          </Text>
                         </Pressable>
                       </TouchableOpacity>
                     ))}
@@ -368,5 +442,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 7,
   },
+  suggestFollowingBtn: {
+    backgroundColor: "#1C1C1E",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#3C3C3E",
+  },
   suggestFollowText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  suggestFollowingText: { color: "#AEAEB2" },
 });

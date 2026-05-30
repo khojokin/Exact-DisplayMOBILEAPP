@@ -21,6 +21,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "@/hooks/useTheme";
 import { fetchPostsByUserId, type FeedPost } from "@/lib/posts";
 import { fetchProfileById, fetchSuggestedProfiles, type AppProfile } from "@/lib/profiles";
+import { followUser, unfollowUser, getFollowingIds } from "@/lib/follows";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_SIZE = (SCREEN_W - 4) / 3;
@@ -48,6 +49,8 @@ export default function ProfileScreen() {
   const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<{ fullName: string; username?: string; bio?: string; avatarUrl?: string } | null>(null);
   const [suggested, setSuggested] = useState<AppProfile[]>([]);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -88,8 +91,11 @@ export default function ProfileScreen() {
       if (userPosts.length === 0) {
         const suggestedProfiles = await fetchSuggestedProfiles([userId], 8);
         setSuggested(suggestedProfiles);
+        const alreadyFollowing = await getFollowingIds(userId);
+        setFollowedIds(new Set(alreadyFollowing));
       } else {
         setSuggested([]);
+        setFollowedIds(new Set());
       }
     } catch (loadError: any) {
       setError(loadError?.message ?? "Unable to load your profile.");
@@ -107,6 +113,38 @@ export default function ProfileScreen() {
 
   const headerName = useMemo(() => profile?.fullName ?? "Profile", [profile]);
   const username = profile?.username ? `@${profile.username}` : "@member";
+
+  async function handleToggleFollow(profileId: string) {
+    if (!userId || followingInProgress.has(profileId)) return;
+    setFollowingInProgress((prev) => new Set(prev).add(profileId));
+    const wasFollowing = followedIds.has(profileId);
+    setFollowedIds((prev) => {
+      const next = new Set(prev);
+      wasFollowing ? next.delete(profileId) : next.add(profileId);
+      return next;
+    });
+    if (wasFollowing !== undefined) {
+      setFollowingCount((c) => c != null ? Math.max(0, c + (wasFollowing ? -1 : 1)) : c);
+    }
+    try {
+      if (wasFollowing) {
+        await unfollowUser(userId, profileId);
+      } else {
+        await followUser(userId, profileId);
+      }
+    } catch {
+      setFollowedIds((prev) => {
+        const next = new Set(prev);
+        wasFollowing ? next.add(profileId) : next.delete(profileId);
+        return next;
+      });
+      if (wasFollowing !== undefined) {
+        setFollowingCount((c) => c != null ? Math.max(0, c + (wasFollowing ? 1 : -1)) : c);
+      }
+    } finally {
+      setFollowingInProgress((prev) => { const next = new Set(prev); next.delete(profileId); return next; });
+    }
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}> 
@@ -222,10 +260,19 @@ export default function ProfileScreen() {
                       <Text style={styles.suggestHandle} numberOfLines={1}>{item.username ? `@${item.username}` : "Member"}</Text>
                     </View>
                     <Pressable
-                      style={[styles.suggestFollowBtn, { backgroundColor: t.accent }]}
-                      onPress={() => router.push({ pathname: "/user-profile", params: { id: item.id } })}
+                      style={[
+                        styles.suggestFollowBtn,
+                        followedIds.has(item.id)
+                          ? { backgroundColor: t.card, borderWidth: StyleSheet.hairlineWidth, borderColor: t.border }
+                          : { backgroundColor: t.accent },
+                        followingInProgress.has(item.id) && { opacity: 0.6 },
+                      ]}
+                      onPress={() => handleToggleFollow(item.id)}
+                      disabled={followingInProgress.has(item.id)}
                     >
-                      <Text style={styles.suggestFollowText}>Follow</Text>
+                      <Text style={[styles.suggestFollowText, followedIds.has(item.id) && { color: t.text }]}>
+                        {followedIds.has(item.id) ? "Following" : "Follow"}
+                      </Text>
                     </Pressable>
                   </TouchableOpacity>
                 ))}
