@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["swift-5.8", "web", "nodejs-24"]
 
 [deployment]
 router = "application"
