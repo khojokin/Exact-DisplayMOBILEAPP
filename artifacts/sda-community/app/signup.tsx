@@ -21,15 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-function GoogleIcon() {
-  return (
-    <View style={{ width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: "#4285F4" }}>G</Text>
-    </View>
-  );
-}
+const { width: SW } = Dimensions.get("window");
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
@@ -40,18 +32,30 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Animations
-  const heroOpacity = useRef(new Animated.Value(0)).current;
-  const formTranslate = useRef(new Animated.Value(40)).current;
-  const formOpacity = useRef(new Animated.Value(0)).current;
+  const bgOp    = useRef(new Animated.Value(0)).current;
+  const heroY   = useRef(new Animated.Value(-20)).current;
+  const heroOp  = useRef(new Animated.Value(0)).current;
+  const cardY   = useRef(new Animated.Value(70)).current;
+  const cardOp  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(heroOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.parallel([
-        Animated.timing(formTranslate, { toValue: 0, duration: 500, useNativeDriver: true }),
-        Animated.timing(formOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+    Animated.parallel([
+      Animated.timing(bgOp, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(100),
+        Animated.parallel([
+          Animated.spring(heroY, { toValue: 0, tension: 65, friction: 10, useNativeDriver: true }),
+          Animated.timing(heroOp, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
+      ]),
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.parallel([
+          Animated.spring(cardY, { toValue: 0, tension: 55, friction: 11, useNativeDriver: true }),
+          Animated.timing(cardOp, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
       ]),
     ]).start();
   }, []);
@@ -66,7 +70,7 @@ export default function SignUpScreen() {
       return;
     }
     if (!isLoaded || !signUp) {
-      Alert.alert("Auth not ready", "Please wait a moment and try again.");
+      Alert.alert("Not ready", "Please wait a moment and try again.");
       return;
     }
 
@@ -99,9 +103,9 @@ export default function SignUpScreen() {
       }
 
       Alert.alert(
-        "Account created",
-        "Please complete any required verification from your email, then sign in.",
-        [{ text: "Go to Sign in", onPress: () => router.replace("/signin") }],
+        "Almost there!",
+        "Check your email to complete verification, then sign in.",
+        [{ text: "Sign in", onPress: () => router.replace("/signin") }],
       );
     } catch (error: any) {
       const message =
@@ -115,30 +119,21 @@ export default function SignUpScreen() {
     }
   };
 
-  const handleSocial = (_provider: "Google" | "Apple") => {
-    Alert.alert("Coming soon", "Social sign-up can be enabled from your Clerk dashboard.");
-  };
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Hero section */}
-      <Animated.View style={[styles.heroSection, { opacity: heroOpacity }]}>
+      {/* Background */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: bgOp }]}>
         <LinearGradient
-          colors={["#0D1B0F", "#1A3A1F", "#2A4A2A"]}
+          colors={["#030C04", "#071A0A", "#0C2410", "#071A0A"]}
+          locations={[0, 0.3, 0.65, 1]}
           style={StyleSheet.absoluteFill}
         />
-        <Image
-          source={require("@/assets/images/sda-logo.png")}
-          style={styles.heroLogo}
-          resizeMode="contain"
-        />
-        <Text style={styles.heroTitle}>Join SDA Community</Text>
-        <Text style={styles.heroSub}>Seventh-day Adventist · Faith · Fellowship</Text>
+        <View style={styles.glowTop} />
+        <View style={styles.glowBottom} />
       </Animated.View>
 
-      {/* Form card (slides up) */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -148,129 +143,226 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* ── Hero ── */}
           <Animated.View
             style={[
-              styles.formCard,
+              styles.hero,
               {
-                opacity: formOpacity,
-                transform: [{ translateY: formTranslate }],
-                paddingBottom: insets.bottom + 32,
+                paddingTop: Platform.OS === "web" ? 64 : insets.top + 40,
+                opacity: heroOp,
+                transform: [{ translateY: heroY }],
               },
             ]}
           >
-            {/* Back button */}
+            <View style={styles.logoRing}>
+              <LinearGradient colors={["#1A4016", "#2A6020", "#1A4016"]} style={StyleSheet.absoluteFill} />
+              <Image
+                source={require("@/assets/images/sda-logo.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.heroTitle}>Join SDA Community</Text>
+            <Text style={styles.heroSub}>Seventh-day Adventist · Faith · Fellowship</Text>
+          </Animated.View>
+
+          {/* ── Card ── */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: cardOp,
+                transform: [{ translateY: cardY }],
+                paddingBottom: (insets.bottom || 16) + 24,
+              },
+            ]}
+          >
+            {/* Back */}
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={22} color="#8E8E93" />
+              <Ionicons name="chevron-back" size={20} color="#4A6644" />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
 
             <Text style={styles.cardTitle}>Create Account</Text>
             <Text style={styles.cardSub}>Start your faith journey today</Text>
 
-            {/* Social buttons */}
-            <View style={styles.socialGroup}>
-              <TouchableOpacity style={styles.appleBtn} onPress={() => handleSocial("Apple")}>
+            {/* Social */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() =>
+                  Alert.alert("Coming soon", "Social sign-up can be enabled from your Clerk dashboard.")
+                }
+              >
                 <Ionicons name="logo-apple" size={19} color="#FFF" />
-                <Text style={styles.appleBtnText}>Continue with Apple</Text>
+                <Text style={styles.socialBtnText}>Apple</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.googleBtn} onPress={() => handleSocial("Google")}>
-                <GoogleIcon />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() =>
+                  Alert.alert("Coming soon", "Social sign-up can be enabled from your Clerk dashboard.")
+                }
+              >
+                <Text style={styles.googleG}>G</Text>
+                <Text style={styles.socialBtnText}>Google</Text>
               </TouchableOpacity>
             </View>
 
             {/* Divider */}
-            <View style={styles.dividerRow}>
+            <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign up with email</Text>
+              <Text style={styles.dividerLabel}>or sign up with email</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Form inputs */}
-            <View style={styles.form}>
-              <View style={styles.inputWrap}>
-                <Ionicons name="person-outline" size={17} color="#636366" style={styles.inputIcon} />
+            {/* Fields */}
+            <View style={styles.fields}>
+              <View style={[styles.field, focusedField === "name" && styles.fieldFocused]}>
+                <Ionicons
+                  name="person-outline"
+                  size={17}
+                  color={focusedField === "name" ? "#6DBF67" : "#4A4A52"}
+                  style={styles.fieldIcon}
+                />
                 <TextInput
-                  style={styles.input}
+                  style={styles.fieldInput}
                   placeholder="Full name"
-                  placeholderTextColor="#636366"
+                  placeholderTextColor="#3A3A44"
                   value={fullName}
                   onChangeText={setFullName}
+                  onFocus={() => setFocusedField("name")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
 
-              <View style={styles.inputWrap}>
-                <Text style={styles.atSign}>@</Text>
+              <View style={[styles.field, focusedField === "user" && styles.fieldFocused]}>
+                <Text
+                  style={[
+                    styles.atSign,
+                    focusedField === "user" && { color: "#6DBF67" },
+                  ]}
+                >
+                  @
+                </Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  placeholderTextColor="#636366"
+                  style={styles.fieldInput}
+                  placeholder="Username (optional)"
+                  placeholderTextColor="#3A3A44"
                   autoCapitalize="none"
                   value={username}
                   onChangeText={setUsername}
+                  onFocus={() => setFocusedField("user")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
 
-              <View style={styles.inputWrap}>
-                <Ionicons name="mail-outline" size={17} color="#636366" style={styles.inputIcon} />
+              <View style={[styles.field, focusedField === "email" && styles.fieldFocused]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={17}
+                  color={focusedField === "email" ? "#6DBF67" : "#4A4A52"}
+                  style={styles.fieldIcon}
+                />
                 <TextInput
-                  style={styles.input}
+                  style={styles.fieldInput}
                   placeholder="Email address"
-                  placeholderTextColor="#636366"
+                  placeholderTextColor="#3A3A44"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
                   onChangeText={setEmail}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
 
-              <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={17} color="#636366" style={styles.inputIcon} />
+              <View style={[styles.field, focusedField === "pw" && styles.fieldFocused]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={17}
+                  color={focusedField === "pw" ? "#6DBF67" : "#4A4A52"}
+                  style={styles.fieldIcon}
+                />
                 <TextInput
-                  style={styles.input}
+                  style={styles.fieldInput}
                   placeholder="Password (min. 6 characters)"
-                  placeholderTextColor="#636366"
+                  placeholderTextColor="#3A3A44"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
+                  onFocus={() => setFocusedField("pw")}
+                  onBlur={() => setFocusedField(null)}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={17} color="#636366" />
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={17}
+                    color="#4A4A52"
+                  />
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[styles.signUpBtn, loading && styles.btnDisabled]}
-                onPress={handleSignUp}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={["#3A6B32", "#4A7B42", "#5A8B52"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.signUpBtnGradient}
-                >
-                  <Text style={styles.signUpBtnText}>
-                    {loading ? "Creating account…" : "Create Account"}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
             </View>
+
+            {/* Strength hint */}
+            {password.length > 0 && (
+              <View style={styles.strengthRow}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.strengthBar,
+                      password.length >= i * 3 && styles.strengthBarFill,
+                      password.length >= 10 && i <= 4 && styles.strengthBarStrong,
+                    ]}
+                  />
+                ))}
+                <Text style={styles.strengthLabel}>
+                  {password.length < 6 ? "Too short" : password.length < 10 ? "Good" : "Strong"}
+                </Text>
+              </View>
+            )}
+
+            {/* CTA */}
+            <TouchableOpacity
+              style={[styles.cta, loading && styles.ctaDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={loading ? ["#1E3B1A", "#1E3B1A"] : ["#2E6B26", "#3D8A34", "#2E6B26"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ctaGradient}
+              >
+                {loading ? (
+                  <View style={styles.ctaRow}>
+                    <Ionicons name="sync-outline" size={17} color="#6DBF67" />
+                    <Text style={styles.ctaText}>Creating account…</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.ctaText}>Create Account</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
 
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
               <TouchableOpacity onPress={() => router.replace("/signin")}>
-                <Text style={styles.footerLink}> Log in</Text>
+                <Text style={styles.footerLink}> Sign in</Text>
               </TouchableOpacity>
             </View>
 
             <Text style={styles.termsText}>
               By creating an account you agree to our{" "}
-              <Text style={styles.termsLink} onPress={() => router.push("/terms-of-service" as any)}>Terms of Service</Text>
+              <Text style={styles.termsLink} onPress={() => router.push("/terms-of-service" as any)}>
+                Terms of Service
+              </Text>
               {" "}and{" "}
-              <Text style={styles.termsLink} onPress={() => router.push("/privacy-policy" as any)}>Privacy Policy</Text>.
+              <Text style={styles.termsLink} onPress={() => router.push("/privacy-policy" as any)}>
+                Privacy Policy
+              </Text>
             </Text>
           </Animated.View>
         </ScrollView>
@@ -280,78 +372,158 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  root: { flex: 1, backgroundColor: "#030C04" },
 
-  // Hero
-  heroSection: {
-    height: SCREEN_HEIGHT * 0.28,
+  glowTop: {
+    position: "absolute",
+    top: -100,
+    left: SW / 2 - 180,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: "#1A4D16",
+    opacity: 0.3,
+  },
+  glowBottom: {
+    position: "absolute",
+    bottom: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "#0E3A10",
+    opacity: 0.4,
+  },
+
+  hero: {
+    alignItems: "center",
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+  },
+  logoRing: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 16,
     overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(109,191,103,0.2)",
   },
-  heroLogo: { width: 68, height: 68, marginBottom: 12 },
-  heroTitle: { color: "#FFFFFF", fontSize: 22, fontWeight: "800", letterSpacing: 0.2 },
-  heroSub: { color: "rgba(255,255,255,0.55)", fontSize: 12, marginTop: 5 },
+  logoImage: { width: 54, height: 54 },
+  heroTitle: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginBottom: 5,
+  },
+  heroSub: {
+    color: "rgba(255,255,255,0.32)",
+    fontSize: 11,
+    letterSpacing: 0.4,
+  },
 
-  // Form card
-  formCard: {
-    flex: 1,
-    backgroundColor: "#111",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+  card: {
+    backgroundColor: "#0D1A0E",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingHorizontal: 24,
     paddingTop: 28,
-    marginTop: -20,
+    borderTopWidth: 1,
+    borderColor: "rgba(109,191,103,0.1)",
+    flex: 1,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 16,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", marginBottom: 16, alignSelf: "flex-start" },
-  backText: { color: "#8E8E93", fontSize: 14, marginLeft: 2 },
-  cardTitle: { color: "#FFFFFF", fontSize: 26, fontWeight: "800", marginBottom: 4 },
-  cardSub: { color: "#636366", fontSize: 13, marginBottom: 24 },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginBottom: 18,
+    gap: 2,
+  },
+  backText: { color: "#4A6644", fontSize: 14 },
+  cardTitle: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  cardSub: { color: "#4A6644", fontSize: 13, marginBottom: 24 },
 
-  socialGroup: { gap: 11, marginBottom: 20 },
-  appleBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: "#1C1C1E", borderRadius: 14, height: 50,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#3C3C3E",
+  socialRow: { flexDirection: "row", gap: 12, marginBottom: 22 },
+  socialBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#111C12",
+    borderWidth: 1,
+    borderColor: "#1E3020",
   },
-  appleBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
-  googleBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: "#1C1C1E", borderRadius: 14, height: 50,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#3C3C3E",
-  },
-  googleBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  socialBtnText: { color: "#C8D8C4", fontSize: 14, fontWeight: "600" },
+  googleG: { fontSize: 16, fontWeight: "800", color: "#6DBF67" },
 
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
-  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: "#2C2C2E" },
-  dividerText: { color: "#48484A", fontSize: 12 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 22 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#14221A" },
+  dividerLabel: { color: "#2E4030", fontSize: 11, fontWeight: "500", letterSpacing: 0.3 },
 
-  form: { gap: 11 },
-  inputWrap: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#1A1A1A", borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#2C2C2E",
-    paddingHorizontal: 14, height: 52,
+  fields: { gap: 11 },
+  field: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0A140B",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#172219",
+    paddingHorizontal: 14,
+    height: 52,
   },
-  inputIcon: { marginRight: 8 },
-  atSign: { color: "#636366", fontSize: 16, marginRight: 6 },
-  input: { flex: 1, color: "#FFFFFF", fontSize: 15 },
+  fieldFocused: {
+    borderColor: "#2E6B26",
+    backgroundColor: "#0D1A0F",
+  },
+  fieldIcon: { marginRight: 10 },
+  atSign: { color: "#4A4A52", fontSize: 16, marginRight: 8, fontWeight: "600" },
+  fieldInput: { flex: 1, color: "#E8F0E6", fontSize: 15 },
   eyeBtn: { padding: 4 },
 
-  signUpBtn: { borderRadius: 14, overflow: "hidden", marginTop: 6 },
-  signUpBtnGradient: { height: 52, alignItems: "center", justifyContent: "center" },
-  btnDisabled: { opacity: 0.6 },
-  signUpBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
+  strengthRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#172219",
+  },
+  strengthBarFill: { backgroundColor: "#3D6B30" },
+  strengthBarStrong: { backgroundColor: "#6DBF67" },
+  strengthLabel: { color: "#3A5C34", fontSize: 10, marginLeft: 4 },
 
-  footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
-  footerText: { color: "#8E8E93", fontSize: 14 },
-  footerLink: { color: "#6B7B5A", fontSize: 14, fontWeight: "700" },
+  cta: { borderRadius: 16, overflow: "hidden", marginTop: 22 },
+  ctaDisabled: { opacity: 0.55 },
+  ctaGradient: { height: 54, alignItems: "center", justifyContent: "center" },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.2 },
 
-  termsText: { color: "#48484A", fontSize: 11, textAlign: "center", marginTop: 14, lineHeight: 16 },
-  termsLink: { color: "#6B7B5A" },
+  footer: { flexDirection: "row", justifyContent: "center", marginTop: 24 },
+  footerText: { color: "#3A4E38", fontSize: 14 },
+  footerLink: { color: "#6DBF67", fontSize: 14, fontWeight: "700" },
+
+  termsText: { color: "#253A23", fontSize: 11, textAlign: "center", marginTop: 14, lineHeight: 17 },
+  termsLink: { color: "#3D6B38" },
 });
