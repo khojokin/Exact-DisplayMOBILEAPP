@@ -1,0 +1,1 @@
+- [Expo web native shims](expo-web-shims.md) — several native-only modules crash silently on web; all must be shimmed in metro.config.js resolver for web platform.

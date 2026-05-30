@@ -9,6 +9,7 @@ const livekitNativeShim = path.resolve(__dirname, "./shims/livekit-react-native.
 const iapShim = path.resolve(__dirname, "./shims/expo-in-app-purchases.js");
 const clerkWebShim = path.resolve(__dirname, "./shims/clerk-expo-web.js");
 const keyboardControllerShim = path.resolve(__dirname, "./shims/react-native-keyboard-controller.js");
+const secureStoreShim = path.resolve(__dirname, "./shims/expo-secure-store.js");
 const previousResolveRequest = config.resolver?.resolveRequest;
 
 config.resolver = {
@@ -65,6 +66,14 @@ config.resolver = {
                                 moduleName.startsWith("react-native-keyboard-controller/")
                         ) {
                                 return { filePath: keyboardControllerShim, type: "sourceFile" };
+                        }
+
+                        // Replace expo-secure-store with localStorage-based shim on web
+                        if (
+                                moduleName === "expo-secure-store" ||
+                                moduleName.startsWith("expo-secure-store/")
+                        ) {
+                                return { filePath: secureStoreShim, type: "sourceFile" };
                         }
                 }
 
