@@ -7,6 +7,8 @@ const emptyShim = path.resolve(__dirname, "./shims/empty.js");
 const webrtcShim = path.resolve(__dirname, "./shims/livekit-react-native-webrtc.js");
 const livekitNativeShim = path.resolve(__dirname, "./shims/livekit-react-native.js");
 const iapShim = path.resolve(__dirname, "./shims/expo-in-app-purchases.js");
+const clerkWebShim = path.resolve(__dirname, "./shims/clerk-expo-web.js");
+const keyboardControllerShim = path.resolve(__dirname, "./shims/react-native-keyboard-controller.js");
 const previousResolveRequest = config.resolver?.resolveRequest;
 
 config.resolver = {
@@ -25,6 +27,14 @@ config.resolver = {
                 }
 
                 if (platform === "web") {
+                        // Bypass Clerk auth on web — mock a signed-in preview user
+                        if (
+                                moduleName === "@clerk/clerk-expo" ||
+                                moduleName.startsWith("@clerk/clerk-expo/")
+                        ) {
+                                return { filePath: clerkWebShim, type: "sourceFile" };
+                        }
+
                         // Stub out native WebRTC module on web
                         if (
                                 moduleName === "@livekit/react-native-webrtc" ||
@@ -47,6 +57,14 @@ config.resolver = {
                                 moduleName.startsWith("expo-in-app-purchases/")
                         ) {
                                 return { filePath: iapShim, type: "sourceFile" };
+                        }
+
+                        // Stub out react-native-keyboard-controller on web
+                        if (
+                                moduleName === "react-native-keyboard-controller" ||
+                                moduleName.startsWith("react-native-keyboard-controller/")
+                        ) {
+                                return { filePath: keyboardControllerShim, type: "sourceFile" };
                         }
                 }
 
