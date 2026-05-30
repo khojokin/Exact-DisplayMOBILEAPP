@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -19,7 +20,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "@/hooks/useTheme";
 import { fetchPostsByUserId, type FeedPost } from "@/lib/posts";
-import { fetchProfileById } from "@/lib/profiles";
+import { fetchProfileById, fetchSuggestedProfiles, type AppProfile } from "@/lib/profiles";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_SIZE = (SCREEN_W - 4) / 3;
@@ -46,6 +47,7 @@ export default function ProfileScreen() {
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<{ fullName: string; username?: string; bio?: string; avatarUrl?: string } | null>(null);
+  const [suggested, setSuggested] = useState<AppProfile[]>([]);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -65,24 +67,30 @@ export default function ProfileScreen() {
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
       ]);
 
-      setProfile(
-        profileRow
-          ? {
-              fullName: profileRow.fullName,
-              username: profileRow.username,
-              bio: profileRow.bio,
-              avatarUrl: profileRow.avatarUrl,
-            }
-          : {
-              fullName: "Member",
-              username: undefined,
-              bio: undefined,
-              avatarUrl: undefined,
-            }
-      );
+      const resolvedProfile = profileRow
+        ? {
+            fullName: profileRow.fullName,
+            username: profileRow.username,
+            bio: profileRow.bio,
+            avatarUrl: profileRow.avatarUrl,
+          }
+        : {
+            fullName: "Member",
+            username: undefined,
+            bio: undefined,
+            avatarUrl: undefined,
+          };
+      setProfile(resolvedProfile);
       setPosts(userPosts);
       if (followersRes.count != null) setFollowerCount(followersRes.count);
       if (followingRes.count != null) setFollowingCount(followingRes.count);
+
+      if (userPosts.length === 0) {
+        const suggestedProfiles = await fetchSuggestedProfiles([userId], 8);
+        setSuggested(suggestedProfiles);
+      } else {
+        setSuggested([]);
+      }
     } catch (loadError: any) {
       setError(loadError?.message ?? "Unable to load your profile.");
     } finally {
@@ -180,9 +188,49 @@ export default function ProfileScreen() {
             <Text style={[styles.emptyTabText, { color: t.subtext, textAlign: "center" }]}>{error}</Text>
           </View>
         ) : posts.length === 0 ? (
-          <View style={styles.emptyTab}>
-            <Ionicons name="grid-outline" size={44} color="#3C3C3E" />
-            <Text style={[styles.emptyTabText, { color: t.subtext }]}>No posts yet</Text>
+          <View style={styles.emptySection}>
+            <Ionicons name="camera-outline" size={52} color="#3C3C3E" style={{ marginBottom: 10 }} />
+            <Text style={[styles.emptyTitle, { color: t.text }]}>Share Your First Post</Text>
+            <Text style={[styles.emptySubtitle, { color: t.subtext }]}>Photos and videos you share will appear here.</Text>
+
+            {suggested.length > 0 && (
+              <View style={styles.suggestSection}>
+                <View style={styles.suggestHeaderRow}>
+                  <Text style={[styles.suggestTitle, { color: t.text }]}>Suggested for you</Text>
+                  <TouchableOpacity onPress={() => router.push("/search")}>
+                    <Text style={[styles.suggestSeeAll, { color: t.accent }]}>See All</Text>
+                  </TouchableOpacity>
+                </View>
+                {suggested.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.suggestRow}
+                    onPress={() => router.push({ pathname: "/user-profile", params: { id: item.id } })}
+                    activeOpacity={0.7}
+                  >
+                    {item.avatarUrl ? (
+                      <Image source={{ uri: item.avatarUrl }} style={styles.suggestAvatar} />
+                    ) : (
+                      <View style={[styles.suggestAvatar, { backgroundColor: "#4A6741", alignItems: "center", justifyContent: "center" }]}>
+                        <Text style={styles.suggestInitials}>
+                          {item.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.suggestInfo}>
+                      <Text style={[styles.suggestName, { color: t.text }]} numberOfLines={1}>{item.fullName}</Text>
+                      <Text style={styles.suggestHandle} numberOfLines={1}>{item.username ? `@${item.username}` : "Member"}</Text>
+                    </View>
+                    <Pressable
+                      style={[styles.suggestFollowBtn, { backgroundColor: t.accent }]}
+                      onPress={() => router.push({ pathname: "/user-profile", params: { id: item.id } })}
+                    >
+                      <Text style={styles.suggestFollowText}>Follow</Text>
+                    </Pressable>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.photoGrid}>
@@ -309,4 +357,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   emptyTabText: { fontSize: 14 },
+  emptySection: {
+    alignItems: "center",
+    paddingTop: 48,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    width: "100%",
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, textAlign: "center", lineHeight: 18, marginBottom: 28 },
+  suggestSection: { width: "100%", marginTop: 4 },
+  suggestHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  suggestTitle: { fontSize: 15, fontWeight: "700" },
+  suggestSeeAll: { fontSize: 13, fontWeight: "600" },
+  suggestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 16,
+    gap: 12,
+  },
+  suggestAvatar: { width: 48, height: 48, borderRadius: 24 },
+  suggestInitials: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  suggestInfo: { flex: 1 },
+  suggestName: { fontSize: 13, fontWeight: "600" },
+  suggestHandle: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
+  suggestFollowBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  suggestFollowText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });

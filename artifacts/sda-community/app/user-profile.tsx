@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -182,9 +183,44 @@ export default function UserProfileScreen() {
             </View>
 
             {posts.length === 0 ? (
-              <View style={styles.emptyTab}>
-                <Ionicons name="grid-outline" size={44} color="#3C3C3E" />
-                <Text style={styles.emptyTabText}>No posts yet</Text>
+              <View style={styles.emptySection}>
+                <Ionicons name="camera-outline" size={48} color="#3C3C3E" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyTitle}>No Posts Yet</Text>
+                <Text style={styles.emptySubtitle}>When {profile.fullName.split(" ")[0]} shares photos or videos, they'll appear here.</Text>
+
+                {suggested.length > 0 && (
+                  <View style={styles.suggestSection}>
+                    <View style={styles.suggestHeaderRow}>
+                      <Text style={styles.suggestTitle}>Suggested for you</Text>
+                    </View>
+                    {suggested.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.suggestRow}
+                        onPress={() => router.push({ pathname: "/user-profile", params: { id: item.id } })}
+                        activeOpacity={0.7}
+                      >
+                        {item.avatarUrl ? (
+                          <Image source={{ uri: item.avatarUrl }} style={styles.suggestAvatar} />
+                        ) : (
+                          <View style={[styles.suggestAvatar, { backgroundColor: "#4A6741", alignItems: "center", justifyContent: "center" }]}>
+                            <Text style={styles.suggestInitials}>{initials(item.fullName)}</Text>
+                          </View>
+                        )}
+                        <View style={styles.suggestInfo}>
+                          <Text style={styles.suggestName} numberOfLines={1}>{item.fullName}</Text>
+                          <Text style={styles.suggestHandle} numberOfLines={1}>{item.username ? `@${item.username}` : "Member"}</Text>
+                        </View>
+                        <Pressable
+                          style={styles.suggestFollowBtn}
+                          onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/user-profile", params: { id: item.id } }); }}
+                        >
+                          <Text style={styles.suggestFollowText}>Follow</Text>
+                        </Pressable>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             ) : (
               <View style={styles.photoGrid}>
@@ -204,38 +240,6 @@ export default function UserProfileScreen() {
                 ))}
               </View>
             )}
-
-            <View style={styles.suggestSection}>
-              <View style={styles.suggestHeader}>
-                <Text style={styles.suggestTitle}>Suggested Profiles</Text>
-              </View>
-              <FlatList
-                horizontal
-                data={suggested}
-                keyExtractor={(item) => item.id}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 10, paddingHorizontal: 14 }}
-                ListEmptyComponent={<Text style={styles.suggestEmpty}>No suggestions available yet.</Text>}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.suggestCard}
-                    onPress={() => router.push({ pathname: "/user-profile", params: { id: item.id } })}
-                  >
-                    <View style={styles.suggestAvatarWrap}>
-                      {item.avatarUrl ? (
-                        <Image source={{ uri: item.avatarUrl }} style={styles.suggestAvatar} />
-                      ) : (
-                        <View style={[styles.suggestAvatar, { backgroundColor: "#3B5BDB", alignItems: "center", justifyContent: "center" }]}>
-                          <Text style={styles.suggestInitials}>{initials(item.fullName)}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.suggestName} numberOfLines={1}>{item.fullName}</Text>
-                    <Text style={styles.suggestHandle} numberOfLines={1}>{item.username ? `@${item.username}` : "@member"}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
           </>
         )}
       </ScrollView>
@@ -334,23 +338,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
   },
-  emptyTab: { alignItems: "center", paddingVertical: 60, gap: 12, width: "100%" },
-  emptyTabText: { color: "#48484A", fontSize: 14 },
-  suggestSection: { marginTop: 16, paddingBottom: 8 },
-  suggestHeader: { paddingHorizontal: 14, marginBottom: 10 },
-  suggestTitle: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  suggestCard: {
-    width: 122,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#2C2C2E",
-    backgroundColor: "#111113",
-    padding: 10,
+  emptySection: {
+    alignItems: "center",
+    paddingTop: 48,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    width: "100%",
   },
-  suggestAvatarWrap: { alignItems: "center", marginBottom: 8 },
-  suggestAvatar: { width: 56, height: 56, borderRadius: 28 },
-  suggestInitials: { color: "#fff", fontWeight: "700" },
+  emptyTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "700", marginBottom: 6 },
+  emptySubtitle: { color: "#8E8E93", fontSize: 13, textAlign: "center", lineHeight: 18, marginBottom: 24 },
+  suggestSection: { width: "100%", marginTop: 4 },
+  suggestHeaderRow: { marginBottom: 14 },
+  suggestTitle: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  suggestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 16,
+    gap: 12,
+  },
+  suggestAvatar: { width: 48, height: 48, borderRadius: 24 },
+  suggestInitials: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  suggestInfo: { flex: 1 },
   suggestName: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  suggestHandle: { color: "#8E8E93", fontSize: 11, marginTop: 2 },
-  suggestEmpty: { color: "#8E8E93", paddingHorizontal: 14, fontSize: 13 },
+  suggestHandle: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
+  suggestFollowBtn: {
+    backgroundColor: "#4A6741",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  suggestFollowText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });
