@@ -12,27 +12,100 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSignIn } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
-type Step = "email" | "sent";
+type Step = "email" | "code" | "password" | "done";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
+  const { signIn, setActive, isLoaded } = useSignIn();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
+  // Step 1: send a 6-digit OTP to the user's email
+  const handleSend = async () => {
     if (!email.trim()) {
       Alert.alert("Enter email", "Please enter your registered email address.");
       return;
     }
+    if (!isLoaded || !signIn) return;
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email.trim().toLowerCase(),
+      });
+      setStep("code");
+    } catch (err: any) {
+      const message =
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        "Could not send reset email. Check the address and try again.";
+      Alert.alert("Error", message);
+    } finally {
       setLoading(false);
-      setStep("sent");
-    }, 1200);
+    }
+  };
+
+  // Step 2: verify the OTP code
+  const handleVerifyCode = async () => {
+    if (!code.trim()) {
+      Alert.alert("Enter code", "Please enter the 6-digit code from your email.");
+      return;
+    }
+    if (!isLoaded || !signIn) return;
+    setLoading(true);
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code: code.trim(),
+      });
+      if (result.status === "needs_new_password") {
+        setStep("password");
+      } else {
+        Alert.alert("Error", "Unexpected response. Please start over.");
+        setStep("email");
+      }
+    } catch (err: any) {
+      const message =
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        "Invalid or expired code. Please try again.";
+      Alert.alert("Incorrect code", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 3: set the new password
+  const handleResetPassword = async () => {
+    if (newPassword.length < 8) {
+      Alert.alert("Weak password", "Password must be at least 8 characters.");
+      return;
+    }
+    if (!isLoaded || !signIn) return;
+    setLoading(true);
+    try {
+      const result = await signIn.resetPassword({ password: newPassword });
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+      }
+    } catch (err: any) {
+      const message =
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        "Could not reset password. Please start over.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,7 +124,8 @@ export default function ForgotPasswordScreen() {
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {step === "email" ? (
+          {/* ── Step 1: Enter email ── */}
+          {step === "email" && (
             <>
               <View style={styles.iconSection}>
                 <View style={styles.iconCircle}>
@@ -59,10 +133,9 @@ export default function ForgotPasswordScreen() {
                 </View>
                 <Text style={styles.title}>Forgot Password?</Text>
                 <Text style={styles.subtitle}>
-                  No worries! Enter your registered email and we'll send you a reset link.
+                  Enter your email and we'll send you a 6-digit code to reset your password.
                 </Text>
               </View>
-
               <View style={styles.form}>
                 <Text style={styles.label}>Email Address</Text>
                 <View style={styles.inputWrap}>
@@ -78,50 +151,106 @@ export default function ForgotPasswordScreen() {
                     autoFocus
                   />
                 </View>
-
-                <TouchableOpacity
-                  style={[styles.sendBtn, loading && styles.btnDisabled]}
-                  onPress={handleSend}
-                  disabled={loading}
-                >
-                  <Text style={styles.sendBtnText}>{loading ? "Sending…" : "Send Reset Link"}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.backToSignIn} onPress={() => router.back()}>
-                  <Ionicons name="arrow-back-outline" size={16} color="#6B7B5A" />
-                  <Text style={styles.backToSignInText}>Back to Sign In</Text>
-                </TouchableOpacity>
               </View>
-            </>
-          ) : (
-            <View style={styles.successSection}>
-              <View style={styles.successCircle}>
-                <Ionicons name="checkmark-circle" size={64} color="#6B7B5A" />
-              </View>
-              <Text style={styles.successTitle}>Email Sent!</Text>
-              <Text style={styles.successBody}>
-                We sent a password reset link to{"\n"}
-                <Text style={styles.successEmail}>{email}</Text>
-              </Text>
-              <Text style={styles.successHint}>
-                Check your inbox (and spam folder) and follow the link to reset your password.
-              </Text>
-
               <TouchableOpacity
-                style={styles.sendBtn}
-                onPress={() => {
-                  setStep("email");
-                  setEmail("");
-                }}
+                style={[styles.sendBtn, loading && styles.btnDisabled]}
+                onPress={handleSend}
+                disabled={loading}
               >
-                <Text style={styles.sendBtnText}>Try a Different Email</Text>
+                <Text style={styles.sendBtnText}>{loading ? "Sending…" : "Send Reset Code"}</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={styles.backToSignIn} onPress={() => router.replace("/signin")}>
+              <TouchableOpacity style={styles.backToSignIn} onPress={() => router.back()}>
                 <Ionicons name="arrow-back-outline" size={16} color="#6B7B5A" />
                 <Text style={styles.backToSignInText}>Back to Sign In</Text>
               </TouchableOpacity>
-            </View>
+            </>
+          )}
+
+          {/* ── Step 2: Enter OTP code ── */}
+          {step === "code" && (
+            <>
+              <View style={styles.iconSection}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="keypad-outline" size={44} color="#6B7B5A" />
+                </View>
+                <Text style={styles.title}>Check Your Email</Text>
+                <Text style={styles.subtitle}>
+                  We sent a 6-digit code to{"\n"}
+                  <Text style={{ color: "#6B7B5A", fontWeight: "700" }}>{email}</Text>
+                </Text>
+              </View>
+              <View style={styles.form}>
+                <Text style={styles.label}>6-Digit Code</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color="#636366" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="000000"
+                    placeholderTextColor="#636366"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={code}
+                    onChangeText={setCode}
+                    autoFocus
+                  />
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.sendBtn, loading && styles.btnDisabled]}
+                onPress={handleVerifyCode}
+                disabled={loading}
+              >
+                <Text style={styles.sendBtnText}>{loading ? "Verifying…" : "Verify Code"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.backToSignIn} onPress={() => { setStep("email"); setCode(""); }}>
+                <Ionicons name="arrow-back-outline" size={16} color="#6B7B5A" />
+                <Text style={styles.backToSignInText}>Use a different email</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* ── Step 3: Set new password ── */}
+          {step === "password" && (
+            <>
+              <View style={styles.iconSection}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="lock-closed-outline" size={44} color="#6B7B5A" />
+                </View>
+                <Text style={styles.title}>New Password</Text>
+                <Text style={styles.subtitle}>
+                  Create a new password for your account. Must be at least 8 characters.
+                </Text>
+              </View>
+              <View style={styles.form}>
+                <Text style={styles.label}>New Password</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={18} color="#636366" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Min. 8 characters"
+                    placeholderTextColor="#636366"
+                    secureTextEntry={!showPassword}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    autoFocus
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={18}
+                      color="#636366"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.sendBtn, loading && styles.btnDisabled]}
+                onPress={handleResetPassword}
+                disabled={loading}
+              >
+                <Text style={styles.sendBtnText}>{loading ? "Saving…" : "Reset Password"}</Text>
+              </TouchableOpacity>
+            </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -173,20 +302,4 @@ const styles = StyleSheet.create({
   sendBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
   backToSignIn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 20 },
   backToSignInText: { color: "#6B7B5A", fontSize: 14, fontWeight: "600" },
-  successSection: { flex: 1, alignItems: "center", paddingTop: 40 },
-  successCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "#4A674122",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: "#6B7B5A33",
-  },
-  successTitle: { color: "#FFFFFF", fontSize: 26, fontWeight: "800", marginBottom: 12 },
-  successBody: { color: "#8E8E93", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 10 },
-  successEmail: { color: "#6B7B5A", fontWeight: "700" },
-  successHint: { color: "#636366", fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 32, maxWidth: 300 },
 });

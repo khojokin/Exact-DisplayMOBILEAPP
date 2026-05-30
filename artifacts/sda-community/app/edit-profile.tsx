@@ -17,7 +17,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useTheme } from "@/hooks/useTheme";
 
 const NAME_LOCK_KEY = "profile.name.lock.until";
 const USERNAME_LOCK_KEY = "profile.username.lock.until";
@@ -28,24 +28,17 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 120 : insets.bottom + 16;
-  const { isPremium } = useSubscription();
-  const theme = isPremium
-    ? {
-        background: "#F6FBF4",
-        text: "#153221",
-        subtext: "#567263",
-        card: "#FFFFFF",
-        border: "#DCE9D8",
-        accent: "#2E7D4E",
-      }
-    : {
-        background: "#0A0A0A",
-        text: "#FFFFFF",
-        subtext: "#8E8E93",
-        card: "#111111",
-        border: "#2C2C2E",
-        accent: "#4A6741",
-      };
+  const { t } = useTheme();
+  const theme = {
+    background: t.bg,
+    text: t.text,
+    subtext: t.subtext,
+    card: t.card,
+    border: t.border,
+    accent: t.accent,
+    accentDark: t.accentDark,
+    headerBorder: t.headerBorder,
+  };
 
   const [name, setName] = useState(INITIAL_NAME);
   const [username, setUsername] = useState(INITIAL_USERNAME);
@@ -112,8 +105,8 @@ export default function EditProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}> 
-      <StatusBar barStyle={isPremium ? "dark-content" : "light-content"} backgroundColor={theme.background} />
-      <View style={[styles.header, { paddingTop: topPad, borderBottomColor: theme.border }]}> 
+      <StatusBar barStyle={t.statusBar} backgroundColor={theme.background} />
+      <View style={[styles.header, { paddingTop: topPad, borderBottomColor: theme.headerBorder, backgroundColor: theme.background }]}> 
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.cancelText, { color: theme.subtext }]}>Cancel</Text>
         </TouchableOpacity>
@@ -133,9 +126,9 @@ export default function EditProfileScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.avatarSection, { borderBottomColor: theme.border }]}> 
-            <View style={styles.avatarCircle}>
+            <View style={[styles.avatarCircle, { borderColor: theme.card }] }>
               <Text style={styles.avatarText}>MS</Text>
-              <View style={styles.cameraOverlay}>
+              <View style={[styles.cameraOverlay, { backgroundColor: theme.accentDark, borderColor: theme.background }] }>
                 <Feather name="camera" size={13} color="#FFFFFF" />
               </View>
             </View>
@@ -181,7 +174,7 @@ export default function EditProfileScreen() {
               : `Username can be changed again in ${daysRemaining(usernameLockedUntil)} day(s).`}
           </Text>
 
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.card }]}> 
             <FieldRow
               label="Bio"
               value={bio}
@@ -326,6 +319,7 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     backgroundColor: "#8B3A8B",
+    borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",

@@ -27,18 +27,7 @@ interface Member {
   streak?: number;
 }
 
-const MEMBERS: Member[] = [
-  { id: "1", name: "Pastor James Osei", initials: "PJ", role: "Pastor", roleCategory: "pastor", description: "Senior Pastor · SDA Church · Daily devotionals", color: "#3B5BDB", isFollowing: true, streak: 45 },
-  { id: "2", name: "Elder Ruth Nakamura", initials: "ER", role: "Elder", roleCategory: "elder", description: "Elder · Sabbath School Director · Bible teacher", color: "#B8860B", isFollowing: true, streak: 30 },
-  { id: "3", name: "David Mensah", initials: "DM", role: "Deacon", roleCategory: "deacon", description: "Pathfinder Leader · Youth Ministry · Adventurer", color: "#C85200", isFollowing: false, streak: 7 },
-  { id: "4", name: "Grace Adetokunbo", initials: "GA", roleCategory: "member", description: "Worship team · Photography · Hospitality", color: "#0E7B5B", isFollowing: true, streak: 12 },
-  { id: "5", name: "Samuel Boateng", initials: "SB", role: "Deacon", roleCategory: "deacon", description: "Deacon · Pathfinders · Bible study facilitator", color: "#8B5E00", isFollowing: false, streak: 3 },
-  { id: "6", name: "Abigail Owusu", initials: "AO", roleCategory: "member", description: "Choir director · Music ministry · Worship", color: "#8B3A8B", isFollowing: true, streak: 20 },
-  { id: "7", name: "Joseph Asante", initials: "JA", roleCategory: "member", description: "Deacon · Bible student · Youth Adventurer", color: "#4A5A7A", isFollowing: false },
-  { id: "8", name: "Mary Adjei", initials: "MA", roleCategory: "member", description: "Women's Ministry · Prayer warrior · Teacher", color: "#6B3A7A", isFollowing: true, streak: 18 },
-  { id: "9", name: "Elder Philip Kojo", initials: "PK", role: "Elder", roleCategory: "elder", description: "Elder · Finance Committee · Mentor", color: "#2A6B4A", isFollowing: false },
-  { id: "10", name: "Sarah Owusu-Acheampong", initials: "SO", roleCategory: "member", description: "Children's Ministry · Sabbath School teacher", color: "#7A3A3A", isFollowing: true },
-];
+const MEMBERS: Member[] = [];
 
 const FILTERS = [
   { id: "all", label: "All" },

@@ -48,7 +48,7 @@ export const LIGHT = {
   inputBg: "#E9E9EB",
   inputText: "#000000",
   inputPlaceholder: "#8A8A8E",
-  statusBar: "dark-content" as const,
+  statusBar: "light-content" as const,
   tabBar: "#FFFFFF",
   tabBorder: "#E5E5EA",
   online: "#34C759",

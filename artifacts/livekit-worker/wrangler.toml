@@ -1,0 +1,17 @@
+name = "sda-livekit-token"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+account_id = "6bae1eb69226c6730b68d979e1e68c3c"
+
+# LIVEKIT_API_KEY and LIVEKIT_API_SECRET are set via:
+#   wrangler secret put LIVEKIT_API_KEY
+#   wrangler secret put LIVEKIT_API_SECRET
+#
+# Optional non-secret vars below.
+
+[vars]
+LIVEKIT_TOKEN_TTL_SECONDS = "3600"
+ALLOWED_ORIGIN = "*"
+
+[observability]
+enabled = true

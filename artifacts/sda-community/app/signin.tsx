@@ -14,6 +14,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSignIn } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
@@ -27,6 +28,7 @@ function GoogleIcon() {
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded, signIn, setActive } = useSignIn();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -105,9 +107,37 @@ export default function SignInScreen() {
   }, []);
 
   const handleSignIn = async () => {
+    if (!isLoaded || !signIn) {
+      Alert.alert("Clerk not ready", "Please wait a second and try again.");
+      return;
+    }
+
+    if (!identifier.trim() || !password.trim()) {
+      Alert.alert("Missing fields", "Enter your email/username and password.");
+      return;
+    }
+
     setLoading(true);
     try {
-      router.replace("/(tabs)");
+      const result = await signIn.create({
+        identifier: identifier.trim(),
+        password,
+      });
+
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      Alert.alert("Sign-in needs more steps", "Please complete verification in Clerk.");
+    } catch (error: any) {
+      const message =
+        error?.errors?.[0]?.longMessage ||
+        error?.errors?.[0]?.message ||
+        error?.message ||
+        "Unable to sign in with Clerk.";
+      Alert.alert("Sign-in failed", message);
     } finally {
       setLoading(false);
     }
@@ -211,7 +241,7 @@ export default function SignInScreen() {
               <TouchableOpacity
                 style={[styles.signInBtn, loading && styles.btnDisabled]}
                 onPress={handleSignIn}
-                disabled={loading}
+                disabled={loading || !isLoaded}
               >
                 {loading ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -233,8 +263,11 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          <Animated.Text style={[styles.termsText, { opacity: footerOp }]}>
-            By continuing you agree to our Terms of Service and Privacy Policy.
+          <Animated.Text style={[styles.termsText, { opacity: footerOp }]}> 
+            By continuing you agree to our{" "}
+            <Text style={styles.termsLink} onPress={() => router.push("/terms-of-service" as any)}>Terms of Service</Text>
+            {" "}and{" "}
+            <Text style={styles.termsLink} onPress={() => router.push("/privacy-policy" as any)}>Privacy Policy</Text>.
           </Animated.Text>
         </View>
       </KeyboardAvoidingView>
@@ -335,4 +368,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     lineHeight: 16,
   },
+  termsLink: { color: "#6B7B5A" },
 });

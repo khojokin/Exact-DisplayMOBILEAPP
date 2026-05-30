@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Platform, StatusBar, Share, Alert,
 } from "react-native";
+import { Image } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -25,7 +26,7 @@ export default function AboutAppScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.logoSection}>
           <View style={styles.logoCircle}>
-            <Ionicons name="people" size={44} color="#6B7B5A" />
+            <Image source={require("@/assets/images/sda-logo.png")} style={styles.logoImage} resizeMode="contain" />
           </View>
           <Text style={styles.appName}>SDA Community</Text>
           <Text style={styles.version}>Version 1.0.0</Text>
@@ -57,12 +58,19 @@ export default function AboutAppScreen() {
         <Text style={styles.sectionLabel}>LINKS</Text>
         <View style={styles.card}>
           {[
-            { label: "Privacy Policy", icon: "lock-closed-outline" },
-            { label: "Terms of Service", icon: "document-text-outline" },
+            { label: "Privacy Policy", icon: "lock-closed-outline", route: "/privacy-policy" },
+            { label: "Terms of Service", icon: "document-text-outline", route: "/terms-of-service" },
             { label: "Open Source Licenses", icon: "code-slash-outline" },
           ].map((item, i, arr) => (
             <View key={item.label}>
-              <TouchableOpacity style={styles.navRow} onPress={() => Alert.alert(item.label, `The ${item.label} will be available at launch.`, [{ text: "OK" }])}>
+              <TouchableOpacity
+                style={styles.navRow}
+                onPress={() =>
+                  item.route
+                    ? router.push(item.route as any)
+                    : Alert.alert(item.label, `${item.label} are available from this release.`, [{ text: "OK" }])
+                }
+              >
                 <Ionicons name={item.icon as any} size={18} color="#636366" />
                 <Text style={styles.navLabel}>{item.label}</Text>
                 <Feather name="chevron-right" size={18} color="#636366" />
@@ -94,6 +102,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 8 },
   logoSection: { alignItems: "center", paddingVertical: 24 },
   logoCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: "#4A674122", alignItems: "center", justifyContent: "center", marginBottom: 14, borderWidth: 2, borderColor: "#6B7B5A33" },
+  logoImage: { width: 56, height: 56 },
   appName: { color: "#FFF", fontSize: 22, fontWeight: "800", marginBottom: 4 },
   version: { color: "#636366", fontSize: 13 },
   missionCard: { backgroundColor: "#4A674115", borderRadius: 14, padding: 16, borderLeftWidth: 3, borderLeftColor: "#6B7B5A", marginBottom: 8 },

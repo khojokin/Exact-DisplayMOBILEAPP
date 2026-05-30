@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  Platform, StatusBar, ScrollView, TextInput, Share,
+  Platform, StatusBar, ScrollView, TextInput, Share, Modal,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,305 +30,6 @@ interface Bulletin {
   tags: string[];
   saved: boolean;
 }
-
-const BULLETINS: Bulletin[] = [
-  {
-    id: "b1",
-    title: "Sabbath Order of Service — May 17, 2026",
-    category: "order-of-service",
-    author: "Pastor James Osei",
-    authorInitials: "PJ",
-    authorColor: "#6B7B5A",
-    date: "2026-05-17",
-    dateLabel: "This Sabbath",
-    isNew: true,
-    isPinned: true,
-    summary: "Order of service for our Sabbath morning worship. Theme: 'Walking in His Light.'",
-    sections: [
-      {
-        heading: "Morning Worship — 9:30 AM",
-        items: [
-          "Prelude — Abigail Owusu (Organ)",
-          "Processional Hymn — #229 'All Hail the Power of Jesus' Name'",
-          "Welcome & Opening Prayer — Elder Ruth Nakamura",
-          "Announcements",
-          "Responsive Reading — Psalm 119:105–112",
-          "Praise & Worship — SDA Praise Team",
-          "Tithes & Offering — Deacon Samuel Boateng",
-          "Children's Story — Sarah Owusu-Acheampong",
-          "Prayer for the Sick & Shut-in",
-          "Sermon: 'Walking in His Light' — Pastor James Osei",
-          "Closing Hymn — #633 'When We All Get to Heaven'",
-          "Benediction — Elder Philip Kojo",
-        ],
-      },
-      {
-        heading: "Afternoon Programme — 1:30 PM",
-        items: [
-          "Sabbath School Review — Elder Ruth Nakamura",
-          "Youth Vespers — Daniel Amponsah",
-          "Special Music — Abena Frempong",
-          "Closing Prayer",
-        ],
-      },
-    ],
-    tags: ["Worship", "Order of Service", "Sabbath"],
-    saved: false,
-  },
-  {
-    id: "b2",
-    title: "Church Anniversary Week — May 19–24, 2026",
-    category: "announcement",
-    author: "Pastor James Osei",
-    authorInitials: "PJ",
-    authorColor: "#6B7B5A",
-    date: "2026-05-19",
-    dateLabel: "Today",
-    isNew: true,
-    isPinned: true,
-    summary: "Central SDA Church celebrates 25 years of faithful ministry this week. Join us for a week of special programmes, testimonies, and praise.",
-    sections: [
-      {
-        heading: "Anniversary Schedule",
-        items: [
-          "Mon, May 19 — Anniversary Dinner & Testimonials, 6 PM (Fellowship Hall)",
-          "Tue, May 20 — Special Evangelistic Meeting, 7 PM (Main Sanctuary)",
-          "Wed, May 21 — Prayer & Fasting Day — Join via Zoom or in person",
-          "Thu, May 22 — 'Then & Now' Photo Exhibition, 10 AM – 6 PM (Lobby)",
-          "Fri, May 23 — Anniversary Vespers & Youth Concert, 6:30 PM",
-          "Sat, May 24 — Grand Sabbath Anniversary Service, 9:30 AM",
-        ],
-      },
-      {
-        heading: "How to Participate",
-        items: [
-          "Sign up to share a testimony at the Anniversary Dinner",
-          "Bring old church photos for the exhibition by Wednesday",
-          "Volunteer to help with catering — contact Deaconess Grace",
-          "Invite a friend or neighbour to any of the week's events",
-        ],
-      },
-    ],
-    tags: ["Anniversary", "Special Programme", "Community"],
-    saved: true,
-  },
-  {
-    id: "b3",
-    title: "Pathfinder Induction Ceremony — June 7",
-    category: "event",
-    author: "Abena Frempong",
-    authorInitials: "AF",
-    authorColor: "#2A5A6A",
-    date: "2026-05-18",
-    dateLabel: "Yesterday",
-    isNew: true,
-    isPinned: false,
-    summary: "Our Pathfinder Club welcomes 12 new members this year. All parents and church family are invited to the induction ceremony.",
-    sections: [
-      {
-        heading: "Event Details",
-        items: [
-          "Date: Sabbath, June 7, 2026",
-          "Time: 3:30 PM (after afternoon programme)",
-          "Venue: Central SDA Church — Main Sanctuary",
-          "Dress code: Pathfinder uniforms for club members; smart casual for guests",
-        ],
-      },
-      {
-        heading: "Programme",
-        items: [
-          "Opening March — Pathfinder Club",
-          "Welcome & Introduction of New Members",
-          "Pledge & Law Recitation",
-          "Induction Ceremony",
-          "Awards & Honour Badges Presentation",
-          "Refreshments (Fellowship Hall)",
-        ],
-      },
-      {
-        heading: "RSVP & Contact",
-        items: [
-          "Please RSVP by June 1 to Abena Frempong",
-          "New member parents: bring photo ID for registration",
-          "Club meeting every Tuesday at 5 PM in the Youth Hall",
-        ],
-      },
-    ],
-    tags: ["Pathfinders", "Youth", "Event"],
-    saved: false,
-  },
-  {
-    id: "b4",
-    title: "Health Ministry: FREE Wellness Screening",
-    category: "notice",
-    author: "Hannah Obeng",
-    authorInitials: "HO",
-    authorColor: "#6A3A2A",
-    date: "2026-05-16",
-    dateLabel: "May 16",
-    isNew: false,
-    isPinned: false,
-    summary: "Free health screening and wellness consultations this Sabbath afternoon. Blood pressure, diabetes screening, BMI checks, and NEWSTART lifestyle advice available.",
-    sections: [
-      {
-        heading: "Services Available",
-        items: [
-          "Blood pressure & pulse check",
-          "Blood glucose (diabetes) screening",
-          "BMI and body composition assessment",
-          "Cholesterol awareness talk",
-          "NEWSTART lifestyle counselling",
-          "Plant-based nutrition Q&A with Dr. Emmanuel Dankwa",
-        ],
-      },
-      {
-        heading: "When & Where",
-        items: [
-          "Date: Sabbath, May 24 (Anniversary Sabbath)",
-          "Time: 12:30 PM – 3:00 PM",
-          "Location: Church Hall — Annex Room B",
-          "No appointment needed — walk in",
-          "All ages welcome including children",
-        ],
-      },
-    ],
-    tags: ["Health", "NEWSTART", "Free Event"],
-    saved: false,
-  },
-  {
-    id: "b5",
-    title: "Sabbath School Q2 Lesson 8 — Summary & Notes",
-    category: "announcement",
-    author: "Elder Ruth Nakamura",
-    authorInitials: "ER",
-    authorColor: "#B8860B",
-    date: "2026-05-15",
-    dateLabel: "May 15",
-    isNew: false,
-    isPinned: false,
-    summary: "Summary of this week's Sabbath School lesson on Sanctification and the Work of the Holy Spirit, with discussion questions for home study.",
-    sections: [
-      {
-        heading: "Lesson Theme",
-        items: [
-          "Title: 'Sanctified by the Spirit'",
-          "Memory Text: 1 Thessalonians 4:3 — 'For this is the will of God, your sanctification.'",
-          "Key points: The Spirit's role in transformation, daily surrender, and the sanctified life",
-        ],
-      },
-      {
-        heading: "Discussion Questions",
-        items: [
-          "What is the difference between justification and sanctification?",
-          "How does the Holy Spirit work in our daily choices and habits?",
-          "Share a time you experienced the Spirit's transforming power in your life.",
-          "How can we as a church better support each other's growth in holiness?",
-        ],
-      },
-      {
-        heading: "Study Resources",
-        items: [
-          "Adult Bible Study Guide — Q2 2026, Lesson 8",
-          "Ellen G. White: 'Steps to Christ,' Chapter 10",
-          "Hymn for the week: #313 'Just as I Am'",
-        ],
-      },
-    ],
-    tags: ["Sabbath School", "Bible Study", "Q2 2026"],
-    saved: true,
-  },
-  {
-    id: "b6",
-    title: "Building Fund Update — May 2026",
-    category: "notice",
-    author: "Elder Philip Kojo",
-    authorInitials: "PK",
-    authorColor: "#2A6B4A",
-    date: "2026-05-14",
-    dateLabel: "May 14",
-    isNew: false,
-    isPinned: false,
-    summary: "Praise the Lord — we have reached 68% of our building fund goal for the new fellowship hall extension. Thank you to all who have faithfully given.",
-    sections: [
-      {
-        heading: "Fund Progress",
-        items: [
-          "Goal: GHC 450,000",
-          "Raised to date: GHC 306,000 (68%)",
-          "Remaining: GHC 144,000",
-          "Next milestone target: GHC 360,000 by end of June",
-        ],
-      },
-      {
-        heading: "How to Give",
-        items: [
-          "Sunday offering — designated envelopes available at the welcome desk",
-          "Bank transfer — details available from Elder Philip or the church office",
-          "Online giving via the church website",
-          "Pledges for specific items (chairs, AV equipment) — see the pledge board in the lobby",
-        ],
-      },
-      {
-        heading: "Construction Update",
-        items: [
-          "Foundation laid — June 2025",
-          "Walls completed — November 2025",
-          "Roofing expected — August 2026 (subject to funding)",
-          "Interior fittings — to be announced",
-        ],
-      },
-    ],
-    tags: ["Building Fund", "Finance", "Notice"],
-    saved: false,
-  },
-  {
-    id: "b7",
-    title: "Women's Ministry Retreat — June 14–16",
-    category: "event",
-    author: "Mary Adjei",
-    authorInitials: "MA",
-    authorColor: "#6B3A7A",
-    date: "2026-05-12",
-    dateLabel: "May 12",
-    isNew: false,
-    isPinned: false,
-    summary: "Annual women's retreat at the Lakeside Conference Centre. Theme: 'Rooted in Grace.' Open to all women in the church aged 18 and above.",
-    sections: [
-      {
-        heading: "Retreat Details",
-        items: [
-          "Dates: June 14 (Friday) to June 16 (Sunday), 2026",
-          "Venue: Lakeside Adventist Conference Centre",
-          "Theme: 'Rooted in Grace — Growing Deeper with God'",
-          "Cost: GHC 380 per person (includes accommodation & meals)",
-          "Bursary available for those in need — apply confidentially",
-        ],
-      },
-      {
-        heading: "Programme Highlights",
-        items: [
-          "Keynote speaker: Dr. Abena Yeboah — 'The Grace That Roots Us'",
-          "Workshop: Spiritual Disciplines for the Busy Woman",
-          "Worship & prayer evenings",
-          "Nature walks and quiet reflection time",
-          "Craft & fellowship activities",
-          "Closing communion and recommitment service",
-        ],
-      },
-      {
-        heading: "Registration",
-        items: [
-          "Deadline: June 1, 2026",
-          "Register with Mary Adjei or at the church office",
-          "Deposit of GHC 100 to confirm your place",
-          "Transport arranged from church — depart 2 PM on June 14",
-        ],
-      },
-    ],
-    tags: ["Women's Ministry", "Retreat", "Event"],
-    saved: false,
-  },
-];
 
 const CATEGORIES = [
   { id: "all", label: "All", icon: "albums-outline" },
@@ -374,13 +75,55 @@ export default function ChurchBulletinScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [activeCategory, setActiveCategory] = useState<BulletinCategory>("all");
   const [search, setSearch] = useState("");
-  const [saved, setSaved] = useState<Set<string>>(
-    new Set(BULLETINS.filter((b) => b.saved).map((b) => b.id))
-  );
+  const [saved, setSaved] = useState<Set<string>>(new Set<string>());
   const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(null);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+  // Add bulletin modal state
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCategory, setNewCategory] = useState<Exclude<BulletinCategory, "all">>("announcement");
+  const [newAuthor, setNewAuthor] = useState("");
+  const [newSummary, setNewSummary] = useState("");
+
+  const AUTHOR_COLORS = ["#6B7B5A", "#3B5BDB", "#B8860B", "#8B3A8B", "#C85200", "#0E7B5B", "#6A3A2A"];
+
+  function buildInitials(name: string) {
+    const parts = name.trim().split(" ").filter(Boolean);
+    return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "??";
+  }
+
+  function handleCreateBulletin() {
+    const title = newTitle.trim();
+    const author = newAuthor.trim() || "Church";
+    if (!title) return;
+    const today = new Date();
+    const created: Bulletin = {
+      id: `b${Date.now()}`,
+      title,
+      category: newCategory,
+      author,
+      authorInitials: buildInitials(author),
+      authorColor: AUTHOR_COLORS[Math.floor(Math.random() * AUTHOR_COLORS.length)],
+      date: today.toISOString().split("T")[0],
+      dateLabel: "Just now",
+      isNew: true,
+      isPinned: false,
+      summary: newSummary.trim(),
+      sections: [],
+      tags: [CATEGORY_LABELS[newCategory] || newCategory],
+      saved: false,
+    };
+    setBulletins((prev) => [created, ...prev]);
+    setAddModalVisible(false);
+    setNewTitle("");
+    setNewCategory("announcement");
+    setNewAuthor("");
+    setNewSummary("");
+  }
 
   const toggleSave = useCallback((id: string) => {
     setSaved((prev) => {
@@ -390,7 +133,7 @@ export default function ChurchBulletinScreen() {
     });
   }, []);
 
-  const filtered = BULLETINS.filter((b) => {
+  const filtered = bulletins.filter((b) => {
     const matchCat = activeCategory === "all" || b.category === activeCategory;
     const matchSearch = search === "" ||
       b.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -402,7 +145,7 @@ export default function ChurchBulletinScreen() {
 
   const pinned = filtered.filter((b) => b.isPinned);
   const regular = filtered.filter((b) => !b.isPinned);
-  const newCount = BULLETINS.filter((b) => b.isNew).length;
+  const newCount = bulletins.filter((b) => b.isNew).length;
 
   return (
     <View style={styles.container}>
@@ -421,16 +164,21 @@ export default function ChurchBulletinScreen() {
             </View>
           )}
         </View>
-        <TouchableOpacity
-          style={[styles.savedToggle, showSavedOnly && styles.savedToggleActive]}
-          onPress={() => setShowSavedOnly((v) => !v)}
-        >
-          <Ionicons
-            name={showSavedOnly ? "bookmark" : "bookmark-outline"}
-            size={18}
-            color={showSavedOnly ? "#3B5BDB" : "#8E8E93"}
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.savedToggle, showSavedOnly && styles.savedToggleActive]}
+            onPress={() => setShowSavedOnly((v) => !v)}
+          >
+            <Ionicons
+              name={showSavedOnly ? "bookmark" : "bookmark-outline"}
+              size={18}
+              color={showSavedOnly ? "#3B5BDB" : "#8E8E93"}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -546,7 +294,8 @@ export default function ChurchBulletinScreen() {
         ListEmptyComponent={
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <Ionicons name="document-text-outline" size={40} color="#3C3C3E" />
-            <Text style={{ color: "#636366", marginTop: 12, fontSize: 14 }}>No bulletins found</Text>
+            <Text style={{ color: "#FFF", marginTop: 12, fontSize: 16, fontWeight: "600" }}>No bulletins yet</Text>
+            <Text style={{ color: "#636366", marginTop: 6, fontSize: 13, textAlign: "center", paddingHorizontal: 40 }}>Tap + to post the first church bulletin</Text>
           </View>
         }
       />
@@ -640,6 +389,67 @@ export default function ChurchBulletinScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* Add Bulletin Modal */}
+      <Modal visible={addModalVisible} transparent animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.addModalCard}>
+            <Text style={styles.addTitle}>New Bulletin</Text>
+
+            <TextInput
+              style={styles.addInput}
+              placeholder="Title"
+              placeholderTextColor="#636366"
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
+            <TextInput
+              style={styles.addInput}
+              placeholder="Your name (author)"
+              placeholderTextColor="#636366"
+              value={newAuthor}
+              onChangeText={setNewAuthor}
+            />
+            <TextInput
+              style={[styles.addInput, styles.addTextArea]}
+              placeholder="Summary"
+              placeholderTextColor="#636366"
+              value={newSummary}
+              onChangeText={setNewSummary}
+              multiline
+              numberOfLines={3}
+            />
+
+            {/* Category selector */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catChipsRow}>
+              {(["announcement", "order-of-service", "notice", "event"] as const).map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catChip, newCategory === cat && { backgroundColor: (CATEGORY_COLORS[cat] || "#3B5BDB") + "33", borderColor: CATEGORY_COLORS[cat] || "#3B5BDB" }]}
+                  onPress={() => setNewCategory(cat)}
+                >
+                  <Text style={[styles.catChipText, newCategory === cat && { color: CATEGORY_COLORS[cat] || "#3B5BDB" }]}>
+                    {CATEGORY_LABELS[cat]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.addBtnRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddModalVisible(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBulletinBtn, !newTitle.trim() && styles.saveBtnDisabled]}
+                disabled={!newTitle.trim()}
+                onPress={handleCreateBulletin}
+              >
+                <Text style={styles.saveText}>Post Bulletin</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -730,4 +540,41 @@ const styles = StyleSheet.create({
   },
   detailActionBtnSaved: { backgroundColor: "#3B5BDB22" },
   detailActionBtnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  addBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: "#3B5BDB",
+    alignItems: "center", justifyContent: "center",
+  },
+  overlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  addModalCard: {
+    backgroundColor: "#1C1C1E", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, gap: 12,
+  },
+  addTitle: { color: "#FFF", fontSize: 18, fontWeight: "700", marginBottom: 4 },
+  addInput: {
+    backgroundColor: "#2C2C2E", color: "#FFF", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14,
+  },
+  addTextArea: { minHeight: 80, textAlignVertical: "top" },
+  catChipsRow: { gap: 8, paddingVertical: 4 },
+  catChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: "#2C2C2E", borderWidth: 1, borderColor: "#3C3C3E",
+  },
+  catChipText: { color: "#8E8E93", fontSize: 13, fontWeight: "500" },
+  addBtnRow: { flexDirection: "row", gap: 12, marginTop: 4 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: "#2C2C2E", alignItems: "center",
+  },
+  cancelText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+  saveBulletinBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: "#3B5BDB", alignItems: "center",
+  },
+  saveBtnDisabled: { opacity: 0.4 },
+  saveText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });

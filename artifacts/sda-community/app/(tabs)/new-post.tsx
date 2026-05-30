@@ -15,8 +15,11 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { useAuth } from "@clerk/clerk-expo";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useVideoPosts, VideoAudience } from "@/hooks/useVideoPosts";
+import { VideoAudience } from "@/hooks/useVideoPosts";
+import { createPost, uploadPostMedia } from "@/lib/posts";
 
 const POST_TYPES = [
   { id: "photo", label: "Photo", icon: "image" as const },
@@ -54,11 +57,17 @@ function renderPostText(text: string) {
 
 export default function NewPostScreen() {
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
   const [selectedType, setSelectedType] = useState("photo");
   const [postText, setPostText] = useState("");
-  const [selectedImage, setSelectedImage] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{
+    uri: string;
+    fileName?: string | null;
+    mimeType?: string | null;
+    kind: "photo" | "video";
+  } | null>(null);
   const [visible, setVisible] = useState(true);
+  const [isPosting, setIsPosting] = useState(false);
   const [audience, setAudience] = useState<VideoAudience>("everyone");
   const [location, setLocation] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -69,7 +78,6 @@ export default function NewPostScreen() {
   const [hashtagQuery, setHashtagQuery] = useState("");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { addNotification } = useNotifications();
-  const { addVideoPost } = useVideoPosts();
   const inputRef = useRef<TextInput>(null);
 
   const placeholder = "Write a caption...";
@@ -108,8 +116,63 @@ export default function NewPostScreen() {
     inputRef.current?.focus();
   }
 
+  const selectedImage = selectedMedia?.kind === "photo";
+  const selectedVideo = selectedMedia?.kind === "video";
+
+  async function pickFromLibrary(type: "photo" | "video") {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission required", "Please allow photo library access to upload media.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: type === "photo" ? ["images"] : ["videos"],
+      allowsEditing: false,
+      quality: 1,
+      videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+    });
+
+    if (!result.canceled && result.assets.length) {
+      const asset = result.assets[0];
+      setSelectedType(type);
+      setSelectedMedia({
+        uri: asset.uri,
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+        kind: type,
+      });
+    }
+  }
+
+  async function captureWithCamera(type: "photo" | "video") {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission required", "Please allow camera access to capture media.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: type === "photo" ? ["images"] : ["videos"],
+      allowsEditing: false,
+      quality: 1,
+      videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+    });
+
+    if (!result.canceled && result.assets.length) {
+      const asset = result.assets[0];
+      setSelectedType(type);
+      setSelectedMedia({
+        uri: asset.uri,
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+        kind: type,
+      });
+    }
+  }
+
   async function handlePost() {
-    if (!selectedImage && !selectedVideo) {
+    if (!selectedMedia) {
       Alert.alert("Add media", "Please upload a photo or video before posting.");
       return;
     }
@@ -117,41 +180,49 @@ export default function NewPostScreen() {
       Alert.alert("Add caption", "Please add a caption before posting.");
       return;
     }
-    const caption = postText.trim();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addNotification({
-      title: "Post published!",
-      body: caption.slice(0, 80) + (caption.length > 80 ? "..." : ""),
-      type: "announcement",
-    });
-
-    const mediaType = selectedVideo ? "video" : "photo";
-
-    if (mediaType === "video") {
-      await addVideoPost({
-        creator: "Maria Santos",
-        creatorRole: "Member",
-        creatorColor: "#4A6741",
-        caption,
-        audience,
-        communityName: audience === "community" ? "SDA Community" : undefined,
-      });
+    if (!userId) {
+      Alert.alert("Sign in required", "Please sign in before posting.");
+      return;
     }
 
-    setPostText("");
-    setSelectedType("photo");
-    setLocation("");
-    setSelectedImage(false);
-    setSelectedVideo(false);
-    router.replace({
-      pathname: "/(tabs)",
-      params: {
-        newPostId: Date.now().toString(),
-        newPostCaption: caption,
-        newPostImage: mediaType === "photo" ? "banner" : "",
-        newPostType: mediaType,
-      },
-    });
+    setIsPosting(true);
+
+    const caption = postText.trim();
+    const mediaType = selectedMedia.kind === "video" ? "video" : "image";
+
+    try {
+      const mediaPath = await uploadPostMedia({
+        userId,
+        uri: selectedMedia.uri,
+        fileName: selectedMedia.fileName,
+        mimeType: selectedMedia.mimeType,
+        mediaType,
+      });
+
+      await createPost({
+        userId,
+        caption,
+        mediaType,
+        mediaPath,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      addNotification({
+        title: "Post published!",
+        body: caption.slice(0, 80) + (caption.length > 80 ? "..." : ""),
+        type: "announcement",
+      });
+
+      setPostText("");
+      setSelectedType("photo");
+      setLocation("");
+      setSelectedMedia(null);
+      router.replace("/(tabs)");
+    } catch (error: any) {
+      Alert.alert("Upload failed", error?.message ?? "Could not publish this post. Please try again.");
+    } finally {
+      setIsPosting(false);
+    }
   }
 
   function handleMediaPick(type: "photo" | "video" | "audio") {
@@ -162,8 +233,8 @@ export default function NewPostScreen() {
       isVideo ? "Upload Video" : "Upload Photo",
       isVideo ? "Choose video source" : "Choose image source",
       [
-        { text: isVideo ? "Record Video" : "Take Photo", onPress: () => { setSelectedImage(!isVideo); setSelectedVideo(isVideo); } },
-        { text: "Choose from Library", onPress: () => { setSelectedImage(!isVideo); setSelectedVideo(isVideo); } },
+        { text: isVideo ? "Record Video" : "Take Photo", onPress: () => captureWithCamera(isVideo ? "video" : "photo") },
+        { text: "Choose from Library", onPress: () => pickFromLibrary(isVideo ? "video" : "photo") },
         ...(isVideo
           ? [
               {
@@ -195,10 +266,11 @@ export default function NewPostScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Post</Text>
         <TouchableOpacity
-          style={[styles.postButton, !postText.trim() && styles.postButtonDisabled]}
+          style={[styles.postButton, (!postText.trim() || isPosting) && styles.postButtonDisabled]}
           onPress={handlePost}
+          disabled={isPosting}
         >
-          <Text style={[styles.postButtonText, !postText.trim() && styles.postButtonTextDisabled]}>Post</Text>
+          <Text style={[styles.postButtonText, (!postText.trim() || isPosting) && styles.postButtonTextDisabled]}>{isPosting ? "Posting..." : "Post"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -318,7 +390,7 @@ export default function NewPostScreen() {
         {(selectedType === "photo" || selectedType === "video" || selectedImage || selectedVideo) && (
           <TouchableOpacity style={styles.mediaPlaceholder} activeOpacity={0.7} onPress={() => handleMediaPick(selectedType as "photo" | "video") }>
             {selectedImage ? (
-              <Image source={require("@/assets/images/banner.png")} style={styles.uploadPreview} resizeMode="cover" />
+              <Image source={{ uri: selectedMedia?.uri }} style={styles.uploadPreview} resizeMode="cover" />
             ) : selectedVideo ? (
               <View style={styles.videoPreview}>
                 <Ionicons name="play-circle" size={42} color="#FFFFFF" />

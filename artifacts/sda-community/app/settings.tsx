@@ -14,6 +14,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "@clerk/clerk-expo";
 import { useAI } from "@/hooks/useAI";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTheme } from "@/hooks/useTheme";
@@ -32,7 +33,8 @@ export default function SettingsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 120 : insets.bottom + 80;
   const [pushEnabled, setPushEnabled] = useState(true);
-  const { isDark, toggle: toggleTheme, t } = useTheme();
+  const { t } = useTheme();
+  const { signOut } = useAuth();
   const { aiEnabled, setAiEnabled } = useAI();
   const { isPremium, privacyMode, readReceipts, setPrivacyMode, setReadReceipts } = useSubscription();
 
@@ -48,7 +50,6 @@ export default function SettingsScreen() {
     {
       title: "Preferences",
       data: [
-        { id: "appearance", label: "Dark Mode", icon: "color-palette-outline", iconColor: "#8B3A8B", type: "toggle", defaultOn: isDark },
         { id: "ai", label: "AI Assistant", icon: "sparkles-outline", iconColor: "#6264A7", type: "toggle", defaultOn: aiEnabled },
         { id: "privacyMode", label: "Privacy Mode", icon: "shield-checkmark-outline", iconColor: "#3B5BDB", type: "toggle", defaultOn: privacyMode },
         { id: "readReceipts", label: "Read Receipts", icon: "mail-open-outline", iconColor: "#D4AF37", type: "toggle", defaultOn: readReceipts },
@@ -73,9 +74,17 @@ export default function SettingsScreen() {
     {
       title: "Support",
       data: [
+        { id: "resources", label: "Resources", icon: "library-outline", iconColor: "#0E7B5B", type: "nav" },
         { id: "help", label: "Help & Support", icon: "help-circle-outline", iconColor: "#6B7B5A", type: "nav" },
         { id: "feedback", label: "Send Feedback", icon: "chatbubble-outline", iconColor: "#3B5BDB", type: "nav" },
         { id: "about", label: "About SDA Community", icon: "information-circle-outline", iconColor: "#636366", type: "nav" },
+      ] as SettingItem[],
+    },
+    {
+      title: "Legal",
+      data: [
+        { id: "privacyPolicy", label: "Privacy Policy", icon: "document-text-outline", iconColor: "#8E8E93", type: "nav" },
+        { id: "terms", label: "Terms of Service", icon: "reader-outline", iconColor: "#8E8E93", type: "nav" },
       ] as SettingItem[],
     },
     {
@@ -104,15 +113,22 @@ export default function SettingsScreen() {
       case "muted": router.push("/muted-members"); break;
       case "reported": router.push("/reported-content"); break;
       case "help": router.push("/help-support"); break;
+      case "resources": router.push("/resources"); break;
       case "feedback": router.push("/send-feedback"); break;
       case "about": router.push("/about-app"); break;
+      case "privacyPolicy": router.push("/privacy-policy" as any); break;
+      case "terms": router.push("/terms-of-service" as any); break;
       case "logout":
         Alert.alert("Log Out", "Are you sure you want to log out?", [
           {
             text: "Log Out",
             style: "destructive",
-            onPress: () => {
-              // Dismiss the settings modal first, then replace the root
+            onPress: async () => {
+              try {
+                await signOut();
+              } catch (error) {
+                if (__DEV__) console.warn("[signOut] failed", error);
+              }
               router.dismissAll();
               router.replace("/signin");
             },
@@ -152,7 +168,7 @@ export default function SettingsScreen() {
         renderItem={({ item, index, section }) => {
           const isFirst = index === 0;
           const isLast = index === section.data.length - 1;
-          const isToggle = item.id === "notifications" || item.id === "appearance" || item.id === "ai" || item.id === "privacyMode" || item.id === "readReceipts";
+          const isToggle = item.id === "notifications" || item.id === "ai" || item.id === "privacyMode" || item.id === "readReceipts";
           const isPremiumLocked = (item.id === "privacyMode" || item.id === "readReceipts") && !isPremium;
           const isDanger = item.type === "danger";
 
@@ -184,8 +200,7 @@ export default function SettingsScreen() {
                       item.id === "notifications" ? pushEnabled
                         : item.id === "ai" ? aiEnabled
                         : item.id === "privacyMode" ? privacyMode
-                        : item.id === "readReceipts" ? readReceipts
-                        : isDark
+                        : readReceipts
                     }
                     onValueChange={(v) => {
                       Haptics.selectionAsync();
@@ -193,7 +208,6 @@ export default function SettingsScreen() {
                       else if (item.id === "ai") setAiEnabled(v);
                       else if (item.id === "privacyMode") setPrivacyMode(v);
                       else if (item.id === "readReceipts") setReadReceipts(v);
-                      else toggleTheme();
                     }}
                     trackColor={{ false: t.borderLight, true: t.accent }}
                     thumbColor="#FFFFFF"

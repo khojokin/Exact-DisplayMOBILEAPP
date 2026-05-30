@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Animated, View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "@clerk/clerk-expo";
+import { supabase } from "@/lib/supabase";
+import { fetchUnreadMessageCount } from "@/lib/chat";
 
 export interface AppNotification {
   id: string;
@@ -10,6 +13,14 @@ export interface AppNotification {
   type: "prayer" | "announcement" | "like" | "comment" | "follow" | "message" | "verse" | "general";
   read: boolean;
   timeAgo: string;
+}
+
+interface DbNotificationRow {
+  id: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+  actor_id?: string | null;
 }
 
 interface NotificationContextValue {
@@ -32,16 +43,58 @@ const NotificationContext = createContext<NotificationContextValue>({
   markRead: () => {},
 });
 
-const DEMO_NOTIFICATIONS: AppNotification[] = [
-  { id: "1", title: "Pastor James Osei", body: "New announcement: Sabbath Service at 9:30 AM 🙏", type: "announcement", read: false, timeAgo: "5m ago" },
-  { id: "2", title: "Elder Ruth Nakamura", body: "Prayer meeting this Wednesday at 7:00 PM", type: "prayer", read: false, timeAgo: "1h ago" },
-  { id: "3", title: "David Mensah", body: "Liked your post about the anniversary service", type: "like", read: false, timeAgo: "2h ago" },
-  { id: "4", title: "Grace Adetokunbo", body: "Commented: \"Amen! God is faithful 🙌\"", type: "comment", read: true, timeAgo: "4h ago" },
-  { id: "5", title: "Samuel Boateng", body: "Started following you", type: "follow", read: true, timeAgo: "1d ago" },
-  { id: "6", title: "Grace Adetokunbo", body: "Hey! Are you coming to the prayer meeting tonight?", type: "message", read: false, timeAgo: "8m ago" },
-  { id: "7", title: "Pastor James Osei", body: "Please share this week's Sabbath School lesson 📖", type: "message", read: false, timeAgo: "30m ago" },
-  { id: "8", title: "Youth Group Chat", body: "Samuel Boateng: Can everyone confirm attendance?", type: "message", read: false, timeAgo: "2h ago" },
-];
+function relativeTime(input: string) {
+  const ms = Date.now() - new Date(input).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function normalizeType(raw: string): AppNotification["type"] {
+  switch (raw) {
+    case "meeting_invite":
+      return "announcement";
+    case "prayer_request":
+      return "prayer";
+    case "mention":
+      return "comment";
+    case "message":
+    case "announcement":
+    case "prayer":
+    case "like":
+    case "comment":
+    case "follow":
+    case "verse":
+    case "general":
+      return raw;
+    default:
+      return "general";
+  }
+}
+
+function defaultBody(type: AppNotification["type"]) {
+  switch (type) {
+    case "message":
+      return "Sent you a new message.";
+    case "like":
+      return "Liked your post.";
+    case "comment":
+      return "Commented on your post.";
+    case "follow":
+      return "Started following you.";
+    case "prayer":
+      return "Shared a prayer update.";
+    case "announcement":
+      return "Posted a new announcement.";
+    case "verse":
+      return "Shared a Bible verse with you.";
+    default:
+      return "You have a new notification.";
+  }
+}
 
 function getTypeColor(type: AppNotification["type"]) {
   switch (type) {
@@ -76,13 +129,130 @@ interface ToastItem {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<AppNotification[]>(DEMO_NOTIFICATIONS);
+  const { userId } = useAuth();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const messageUnreadCount = notifications.filter((n) => !n.read && n.type === "message").length;
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
   const communityUnreadCount = notifications.filter((n) => !n.read && n.type !== "message").length;
+
+  const loadNotifications = useCallback(async () => {
+    if (!userId) {
+      setNotifications([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, type, is_read, created_at, actor_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      setNotifications([]);
+      return;
+    }
+
+    const rows = (data ?? []) as DbNotificationRow[];
+    const actorIds = Array.from(new Set(rows.map((row) => row.actor_id).filter(Boolean) as string[]));
+    let actorMap = new Map<string, string>();
+
+    if (actorIds.length) {
+      const { data: actors } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", actorIds);
+
+      actorMap = new Map((actors ?? []).map((row: any) => [row.id, row.full_name ?? "Member"]));
+    }
+
+    setNotifications(
+      rows.map((row) => {
+        const type = normalizeType(row.type);
+        const actor = row.actor_id ? actorMap.get(row.actor_id) : undefined;
+        return {
+          id: row.id,
+          title: actor ?? "New activity",
+          body: defaultBody(type),
+          type,
+          read: !!row.is_read,
+          timeAgo: relativeTime(row.created_at),
+        } as AppNotification;
+      })
+    );
+  }, [userId]);
+
+  const loadUnreadMessages = useCallback(async () => {
+    if (!userId) {
+      setMessageUnreadCount(0);
+      return;
+    }
+
+    try {
+      const count = await fetchUnreadMessageCount(userId);
+      setMessageUnreadCount(count);
+    } catch {
+      setMessageUnreadCount(0);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadNotifications();
+    loadUnreadMessages();
+
+    if (!userId) return;
+
+    const notifChannel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadNotifications();
+        }
+      )
+      .subscribe();
+
+    const messageChannel = supabase
+      .channel(`messages-unread-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+        },
+        () => {
+          loadUnreadMessages();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversation_participants",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadUnreadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notifChannel);
+      supabase.removeChannel(messageChannel);
+    };
+  }, [loadNotifications, loadUnreadMessages, userId]);
 
   const addNotification = useCallback((n: Omit<AppNotification, "id" | "read" | "timeAgo">) => {
     const id = Date.now().toString();
@@ -113,11 +283,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const markAllRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+    if (userId) {
+      supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", userId)
+        .eq("is_read", false)
+        .then(() => undefined, () => undefined);
+    }
+  }, [userId]);
 
   const markRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-  }, []);
+    if (userId) {
+      supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", id)
+        .eq("user_id", userId)
+        .then(() => undefined, () => undefined);
+    }
+  }, [userId]);
 
   return (
     <NotificationContext.Provider value={{ notifications, unreadCount, messageUnreadCount, communityUnreadCount, addNotification, markAllRead, markRead }}>

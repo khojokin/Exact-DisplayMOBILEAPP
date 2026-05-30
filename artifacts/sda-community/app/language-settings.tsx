@@ -12,12 +12,6 @@ const LANGUAGES = [
   { code: "fr", name: "French", native: "Français" },
   { code: "es", name: "Spanish", native: "Español" },
   { code: "pt", name: "Portuguese", native: "Português" },
-  { code: "sw", name: "Swahili", native: "Kiswahili" },
-  { code: "yo", name: "Yoruba", native: "Yorùbá" },
-  { code: "ha", name: "Hausa", native: "Hausa" },
-  { code: "ig", name: "Igbo", native: "Igbo" },
-  { code: "ak", name: "Twi", native: "Twi" },
-  { code: "de", name: "German", native: "Deutsch" },
 ];
 
 const REGIONS = [

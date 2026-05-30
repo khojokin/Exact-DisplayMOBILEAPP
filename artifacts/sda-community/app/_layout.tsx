@@ -5,6 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -22,6 +23,7 @@ import { VideoPostsProvider } from "@/hooks/useVideoPosts";
 import { StripeProviderWrapper } from "@/components/StripeProviderWrapper";
 import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -81,7 +83,15 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
+        name="new-community"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
         name="devotional"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="resources"
         options={{ headerShown: false, presentation: "card" }}
       />
       <Stack.Screen
@@ -147,6 +157,8 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
             <KeyboardProvider>
+              <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+                <ClerkLoaded>
                 <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
                   <SubscriptionProvider>
                     <VideoPostsProvider>
@@ -158,6 +170,8 @@ export default function RootLayout() {
                     </VideoPostsProvider>
                   </SubscriptionProvider>
                 </StripeProviderWrapper>
+                </ClerkLoaded>
+              </ClerkProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

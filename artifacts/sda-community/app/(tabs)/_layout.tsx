@@ -1,4 +1,5 @@
-import { Tabs } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
+import { Redirect, Tabs } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
@@ -7,7 +8,11 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function TabLayout() {
+  const { isSignedIn, isLoaded } = useAuth();
   const insets = useSafeAreaInsets();
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return <Redirect href="/signin" />;
   const { messageUnreadCount, communityUnreadCount } = useNotifications();
   const { t } = useTheme();
   const TAB_BAR_HEIGHT = 50;

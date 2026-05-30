@@ -17,15 +17,15 @@ import * as Haptics from "expo-haptics";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const PEOPLE = [
-  { id: "p1", name: "Pastor James Osei", role: "Pastor", roleColor: "#6B7B5A", desc: "Senior Pastor · Daily devotionals", color: "#3B5BDB", isFollowing: true },
-  { id: "p2", name: "Elder Ruth Nakamura", role: "Elder", roleColor: "#B8860B", desc: "Elder · Sabbath School Director", color: "#B8860B", isFollowing: true },
-  { id: "p3", name: "David Mensah", role: "Deacon", roleColor: "#3B5BDB", desc: "Pathfinder Leader · Youth Ministry", color: "#C85200", isFollowing: false },
+  { id: "p1", name: "Pastor James Osei", desc: "Daily devotionals", color: "#3B5BDB", isFollowing: true },
+  { id: "p2", name: "Elder Ruth Nakamura", desc: "Sabbath School Director", color: "#B8860B", isFollowing: true },
+  { id: "p3", name: "David Mensah", desc: "Pathfinder Leader · Youth Ministry", color: "#C85200", isFollowing: false },
   { id: "p4", name: "Grace Adetokunbo", desc: "Worship team · Photography", color: "#0E7B5B", isFollowing: true },
-  { id: "p5", name: "Samuel Boateng", role: "Deacon", roleColor: "#3B5BDB", desc: "Deacon · Bible study facilitator", color: "#8B5E00", isFollowing: false },
+  { id: "p5", name: "Samuel Boateng", desc: "Bible study facilitator", color: "#8B5E00", isFollowing: false },
   { id: "p6", name: "Abigail Owusu", desc: "Choir director · Music ministry", color: "#8B3A8B", isFollowing: true },
-  { id: "p7", name: "Joseph Asante", desc: "Deacon · Bible student", color: "#4A5A7A", isFollowing: false },
+  { id: "p7", name: "Joseph Asante", desc: "Bible student", color: "#4A5A7A", isFollowing: false },
   { id: "p8", name: "Mary Adjei", desc: "Women's Ministry · Prayer warrior", color: "#6B3A7A", isFollowing: true },
-  { id: "p9", name: "Elder Philip Kojo", role: "Elder", roleColor: "#B8860B", desc: "Elder · Finance Committee · Mentor", color: "#2A6B4A", isFollowing: false },
+  { id: "p9", name: "Elder Philip Kojo", desc: "Finance Committee · Mentor", color: "#2A6B4A", isFollowing: false },
   { id: "p10", name: "Sarah Owusu-Acheampong", desc: "Children's Ministry · Sabbath School", color: "#7A3A3A", isFollowing: true },
 ];
 
@@ -86,11 +86,6 @@ function PersonRow({
       <View style={s.personInfo}>
         <View style={s.nameRow}>
           <Text style={s.personName}>{item.name}</Text>
-          {item.role && (
-            <View style={[s.roleBadge, { backgroundColor: (item.roleColor ?? "#636366") + "33" }]}>
-              <Text style={[s.roleText, { color: item.roleColor ?? "#636366" }]}>{item.role}</Text>
-            </View>
-          )}
         </View>
         <Text style={s.personDesc} numberOfLines={1}>{item.desc}</Text>
       </View>
@@ -162,7 +157,6 @@ export default function SearchScreen() {
 
   const filteredPeople = PEOPLE.filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase()) ||
-    (p.role ?? "").toLowerCase().includes(query.toLowerCase()) ||
     p.desc.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -366,8 +360,6 @@ const s = StyleSheet.create({
   personInfo: { flex: 1 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
   personName: { color: "#FFF", fontSize: 15, fontWeight: "600" },
-  roleBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  roleText: { fontSize: 10, fontWeight: "600" },
   personDesc: { color: "#636366", fontSize: 12 },
   followBtn: {
     paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,

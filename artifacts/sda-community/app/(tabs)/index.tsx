@@ -18,12 +18,14 @@ import {
   RefreshControl,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useVideoPosts } from "@/hooks/useVideoPosts";
 import { useTheme } from "@/hooks/useTheme";
+import { supabase } from "@/lib/supabase";
+import { fetchRecentPosts } from "@/lib/posts";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -105,12 +107,15 @@ function VerseOfTheDayCard({ onShare }: { onShare: () => void }) {
 interface CommunityPost {
   id: string;
   author: string;
+  authorAvatarUrl?: string;
   role?: string;
   roleColor?: string;
   timeAgo: string;
+  createdAt?: string;
   content: string;
   hasMedia?: boolean;
   imageKey?: "banner" | "logo";
+  mediaUri?: string;
   mediaType?: "image" | "video";
   reactions: number;
   comments: number;
@@ -125,63 +130,11 @@ type FeedItem =
   | { type: "suggested_shorts" };
 
 const STORIES = [
-  { id: "you", label: "Your Story", color: "#4A6741", isYou: true },
-  { id: "pj", label: "James", color: "#3B5BDB", initials: "PJ", isLive: true, liveId: "pj" },
-  { id: "er", label: "Ruth", color: "#B8860B", initials: "ER" },
-  { id: "ga", label: "Grace", color: "#0E7B5B", initials: "GA", isLive: true, liveId: "ga" },
-  { id: "ao", label: "Abigail", color: "#8B3A8B", initials: "AO" },
-  { id: "dm", label: "David", color: "#C85200", initials: "DM" },
-  { id: "go-live", label: "Go Live", color: "#B33A3A", isGoLive: true },
+  { id: "you", label: "Your Story", color: "#4A6741", isYou: true, isGoLive: false, isLive: false, liveId: "", initials: "You" },
+  { id: "go-live", label: "Go Live", color: "#B33A3A", isGoLive: true, isYou: false, isLive: false, liveId: "", initials: "Go" },
 ];
 
-const COMMUNITY_POSTS: CommunityPost[] = [
-  {
-    id: "1",
-    author: "Pastor James Osei",
-    role: "Pastor",
-    roleColor: "#6B7B5A",
-    timeAgo: "5h ago",
-    content:
-      "Sabbath Service this week will be held at our main sanctuary at 9:30 AM. We'll be celebrating our 25th church anniversary with a special programme.",
-    hasMedia: true,
-    imageKey: "banner",
-    reactions: 92,
-    comments: 14,
-    liked: false,
-    saved: false,
-    commentsPreview: [{ author: "Grace Adetokunbo", text: "Praying with you, David. God is faithful" }],
-  },
-  {
-    id: "2",
-    author: "David Mensah",
-    timeAgo: "5h ago",
-    content:
-      "Rehearsal night with the most talented voices in SDA. We're preparing something special for the anniversary service. God is getting all the glory!",
-    hasMedia: true,
-    imageKey: "banner",
-    reactions: 95,
-    comments: 5,
-    liked: true,
-    saved: false,
-    commentsPreview: [{ author: "Grace Adetokunbo", text: "Praying with you, David. God is faithful" }],
-  },
-  {
-    id: "3",
-    author: "Elder Ruth Nakamura",
-    role: "Elder",
-    roleColor: "#B8860B",
-    timeAgo: "8h ago",
-    content:
-      "Prayer meeting this Wednesday evening at 7:00 PM. All are welcome to join us in lifting our community and families before God.",
-    hasMedia: true,
-    imageKey: "banner",
-    reactions: 67,
-    comments: 9,
-    liked: false,
-    saved: true,
-    commentsPreview: [],
-  },
-];
+const COMMUNITY_POSTS: CommunityPost[] = [];
 
 const SUGGESTED_PEOPLE = [
   { id: "sp1", name: "Pastor James Osei", role: "Pastor", color: "#3B5BDB", verified: true },
@@ -191,12 +144,7 @@ const SUGGESTED_PEOPLE = [
   { id: "sp5", name: "Naomi Asante", role: "Youth Leader", color: "#0E7B5B", verified: false },
 ];
 
-const SUGGESTED_SHORTS = [
-  { id: "ss1", creator: "James", title: "Morning devotion in 30 seconds", color: "#5A3E2B" },
-  { id: "ss2", creator: "Grace", title: "Worship chorus for today", color: "#2D4A66" },
-  { id: "ss3", creator: "Ruth", title: "Prayer tip before bedtime", color: "#3A5A3A" },
-  { id: "ss4", creator: "David", title: "Choir rehearsal highlight", color: "#5C2F3E" },
-];
+const SUGGESTED_SHORTS: { id: string; creator: string; title: string; color: string }[] = [];
 
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -208,6 +156,39 @@ const AVATAR_COLORS: Record<string, string> = {
 
 function getColor(name: string) {
   return AVATAR_COLORS[name] ?? "#4A6741";
+}
+
+function isTransientPost(post: CommunityPost) {
+  return post.id.startsWith("u-") || post.id.startsWith("v-");
+}
+
+function formatTimeAgo(isoDate: string) {
+  const date = new Date(isoDate).getTime();
+  if (!Number.isFinite(date)) return "now";
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - date) / 1000));
+  if (diffSeconds < 60) return "now";
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function sortFeedPosts(posts: CommunityPost[]) {
+  const transientPosts = posts.filter(isTransientPost);
+  const persistentPosts = posts
+    .filter((post) => !isTransientPost(post))
+    .sort((a, b) => {
+      const score = (post: CommunityPost) => post.reactions * 2 + post.comments * 3 + Math.random() * 18;
+      return score(b) - score(a);
+    });
+
+  return [...transientPosts, ...persistentPosts];
 }
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color?: string; size?: number }) {
@@ -444,7 +425,9 @@ function PostCard({
   onMore: (post: CommunityPost) => void;
   isFollowed: boolean;
 }) {
-  const imageSource = post.imageKey === "logo"
+  const imageSource = post.mediaUri
+    ? { uri: post.mediaUri }
+    : post.imageKey === "logo"
     ? require("@/assets/images/sda-logo.png")
     : require("@/assets/images/banner.png");
 
@@ -559,74 +542,70 @@ function PostCard({
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTheme();
-  const params = useLocalSearchParams<{ newPostId?: string; newPostCaption?: string; newPostImage?: string; newPostType?: string }>();
-  const [posts, setPosts] = useState<CommunityPost[]>(COMMUNITY_POSTS);
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [followedAuthors, setFollowedAuthors] = useState<Set<string>>(new Set());
   const [sheetPost, setSheetPost] = useState<CommunityPost | null>(null);
-  const [feedSeed, setFeedSeed] = useState(0);
   const { videoPosts } = useVideoPosts();
   const { unreadCount, addNotification } = useNotifications();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [refreshing, setRefreshing] = useState(false);
   const [bottomRefreshing, setBottomRefreshing] = useState(false);
   const verseNotifiedRef = useRef(false);
-  const consumedPostedIds = useRef<Set<string>>(new Set());
-  const consumedVideoIds = useRef<Set<string>>(new Set());
   const bottomRefreshLockRef = useRef(false);
 
-  const newPostId = Array.isArray(params.newPostId) ? params.newPostId[0] : params.newPostId;
-  const newPostCaption = Array.isArray(params.newPostCaption) ? params.newPostCaption[0] : params.newPostCaption;
-  const newPostType = Array.isArray(params.newPostType) ? params.newPostType[0] : params.newPostType;
-
-  useEffect(() => {
-    if (!newPostId || !newPostCaption) return;
-    if (consumedPostedIds.current.has(newPostId)) return;
-
-    consumedPostedIds.current.add(newPostId);
-    setPosts((prev) => [
-      {
-        id: `u-${newPostId}`,
-        author: "You",
-        timeAgo: "now",
-        content: newPostCaption,
-        hasMedia: true,
-        imageKey: newPostType === "video" ? undefined : "banner",
-        mediaType: newPostType === "video" ? "video" : "image",
+  const loadPosts = useCallback(async () => {
+    const recentPosts = await fetchRecentPosts(40);
+    setPosts(
+      recentPosts.map((post) => ({
+        id: post.id,
+        author: post.authorName,
+        authorAvatarUrl: post.authorAvatarUrl,
+        timeAgo: formatTimeAgo(post.createdAt),
+        createdAt: post.createdAt,
+        content: post.caption,
+        hasMedia: Boolean(post.mediaUrl),
+        mediaUri: post.mediaUrl,
+        mediaType: post.mediaType,
         reactions: 0,
         comments: 0,
         liked: false,
         saved: false,
         commentsPreview: [],
-      },
-      ...prev,
-    ]);
-  }, [newPostId, newPostCaption, newPostType]);
+      }))
+    );
+  }, []);
 
   useEffect(() => {
-    if (!videoPosts.length) return;
-    setPosts((prev) => {
-      const inserts: CommunityPost[] = [];
-      videoPosts.forEach((vp) => {
-        if (consumedVideoIds.current.has(vp.id)) return;
-        consumedVideoIds.current.add(vp.id);
-        inserts.push({
-          id: `v-${vp.id}`,
-          author: vp.creator,
-          role: vp.creatorRole,
-          timeAgo: "now",
-          content: vp.caption,
-          hasMedia: true,
-          mediaType: "video",
-          reactions: 0,
-          comments: 0,
-          liked: false,
-          saved: false,
-          commentsPreview: [],
-        });
-      });
-      return inserts.length ? [...inserts, ...prev] : prev;
-    });
-  }, [videoPosts]);
+    let cancelled = false;
+
+    const syncPosts = async () => {
+      try {
+        await loadPosts();
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("[home] failed to fetch realtime posts", error);
+        }
+      }
+    };
+
+    syncPosts();
+
+    const channel = supabase
+      .channel("home-posts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        () => {
+          syncPosts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [loadPosts]);
 
   // Decide once on mount whether and where to show suggested people
   const suggestConfig = useRef({
@@ -637,15 +616,10 @@ export default function HomeScreen() {
   // ── Algorithm feed: rescore + reshuffle on every visit ──
   useFocusEffect(
     useCallback(() => {
-      setFeedSeed((prev) => prev + 1);
-      setPosts((prev) =>
-        [...prev].sort((a, b) => {
-          const score = (p: CommunityPost) =>
-            p.reactions * 2 + p.comments * 3 + Math.random() * 18;
-          return score(b) - score(a);
-        })
-      );
-    }, [])
+      loadPosts().catch((error) => {
+        console.warn("[home] failed to refresh on focus", error);
+      });
+    }, [loadPosts])
   );
 
   useEffect(() => {
@@ -687,12 +661,9 @@ export default function HomeScreen() {
 
   function handleLogoPress() {
     Haptics.selectionAsync();
-    setPosts((prev) =>
-      [...prev].sort((a, b) => {
-        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
-        return score(b) - score(a);
-      })
-    );
+    loadPosts().catch((error) => {
+      console.warn("[home] failed to reload posts", error);
+    });
   }
 
   function handleSendNotification() {
@@ -708,18 +679,14 @@ export default function HomeScreen() {
     setRefreshing(true);
     Haptics.selectionAsync();
 
-    // Re-score and reshuffle to mimic fetching a fresh home feed.
-    setFeedSeed((prev) => prev + 1);
-    setPosts((prev) =>
-      [...prev].sort((a, b) => {
-        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
-        return score(b) - score(a);
-      })
-    );
+    try {
+      await loadPosts();
+    } catch (error) {
+      console.warn("[home] pull-to-refresh failed", error);
+    }
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
     setRefreshing(false);
-  }, [refreshing]);
+  }, [refreshing, loadPosts]);
 
   const handleBottomRefresh = useCallback(async () => {
     if (bottomRefreshing || bottomRefreshLockRef.current) return;
@@ -728,22 +695,19 @@ export default function HomeScreen() {
     setBottomRefreshing(true);
     Haptics.selectionAsync();
 
-    setFeedSeed((prev) => prev + 1);
-    setPosts((prev) =>
-      [...prev].sort((a, b) => {
-        const score = (p: CommunityPost) => p.reactions * 2 + p.comments * 3 + Math.random() * 18;
-        return score(b) - score(a);
-      })
-    );
+    try {
+      await loadPosts();
+    } catch (error) {
+      console.warn("[home] bottom refresh failed", error);
+    }
 
-    await new Promise((resolve) => setTimeout(resolve, 650));
     setBottomRefreshing(false);
 
     // Prevent repeated rapid-fire triggers while user stays near the bottom.
     setTimeout(() => {
       bottomRefreshLockRef.current = false;
     }, 900);
-  }, [bottomRefreshing]);
+  }, [bottomRefreshing, loadPosts]);
 
   // Build mixed feed: posts + optional suggested people card
   const feedItems = useMemo<FeedItem[]>(() => {
@@ -753,14 +717,13 @@ export default function HomeScreen() {
       items.splice(pos, 0, { type: "suggested_people" });
     }
 
-    const shortsInsertAfter = Math.min(Math.max(1, (feedSeed % 3) + 1), items.length);
-    const shortsPos = Math.min(shortsInsertAfter, items.length);
+    const shortsPos = Math.min(2, items.length);
     if (items.length > 0) {
       items.splice(shortsPos, 0, { type: "suggested_shorts" });
     }
 
     return items;
-  }, [posts, feedSeed]);
+  }, [posts]);
 
   const suggestedShortItems = useMemo(() => {
     if (!videoPosts.length) return [];

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Image,
   TouchableOpacity,
   TextInput,
   Platform,
@@ -85,6 +86,7 @@ export default function PostDetailScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const post = POSTS_DATA[id ?? "1"] ?? POSTS_DATA["1"];
+  const postImageSource = require("@/assets/images/banner.png");
   const [liked, setLiked] = useState(post.liked);
   const [saved, setSaved] = useState(post.saved);
   const [reactions, setReactions] = useState(post.reactions);
@@ -149,8 +151,8 @@ export default function PostDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.mediaPlaceholder}>
-            <Ionicons name="image-outline" size={44} color="#3C3C3E" />
+          <View style={styles.postImageWrap}>
+            <Image source={postImageSource} style={styles.postImage} resizeMode="cover" />
           </View>
 
           <View style={styles.reactionBar}>
@@ -266,12 +268,12 @@ const styles = StyleSheet.create({
   roleText: { fontSize: 10, fontWeight: "600" },
   timeAgo: { color: "#636366", fontSize: 12, marginTop: 2 },
   moreBtn: { padding: 4 },
-  mediaPlaceholder: {
-    height: 220,
+  postImageWrap: {
+    aspectRatio: 4 / 5,
     backgroundColor: "#1C1C1E",
-    alignItems: "center",
-    justifyContent: "center",
+    overflow: "hidden",
   },
+  postImage: { width: "100%", height: "100%" },
   reactionBar: {
     flexDirection: "row",
     alignItems: "center",

@@ -27,6 +27,7 @@ const ADMIN_MENU = [
   { id: "users", title: "User Management", sub: "View, ban, or manage roles", icon: "people-outline", color: "#3B5BDB", route: "/members" },
   { id: "content", title: "Content Moderation", sub: "Review reported posts \u0026 stories", icon: "flag-outline", color: "#FF453A", route: "/reported-content" },
   { id: "analytics", title: "App Analytics", sub: "Growth, engagement \u0026 revenue", icon: "bar-chart-outline", color: "#4A6741", route: "/analytics" },
+  { id: "config", title: "App Config", sub: "Publishable keys, feature flags \u0026 URLs", icon: "options-outline", color: "#0E7B5B", route: "/admin-config" },
   { id: "settings", title: "App Settings", sub: "Features, announcements \u0026 config", icon: "settings-outline", color: "#8E8E93", route: "/settings" },
   { id: "support", title: "Support Inbox", sub: "Chat live with users", icon: "chatbubbles-outline", color: "#0E7B5B", route: "/dm/support" },
   { id: "live", title: "Live Stream Control", sub: "Start or manage live sessions", icon: "radio-outline", color: "#C85200", route: "/go-live" },
@@ -71,7 +72,7 @@ export default function AdminScreen() {
       const { count: reportedContent } = await supabase
         .from("reports")
         .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
+        .eq("status", "open");
 
       setStats({
         totalUsers: totalUsers ?? 0,

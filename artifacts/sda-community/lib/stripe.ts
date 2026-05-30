@@ -1,7 +1,11 @@
 import { useStripe, PaymentSheetError } from "@stripe/stripe-react-native";
 import { Alert } from "react-native";
 
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+const STRIPE_FALLBACK_PUBLISHABLE_KEY = "pk_test_51NqtHuCQ4lj9Byd7Rv8bE9qPlQ0XuSSbJVsevW9WZXHOkpL9CqQwaiGkQewCNLSqHZrlpo4kjZaLLKMmIZowvJxi007wStbAkw";
+
+const STRIPE_PUBLISHABLE_KEY =
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ||
+  STRIPE_FALLBACK_PUBLISHABLE_KEY;
 
 export function useStripeCheckout() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();

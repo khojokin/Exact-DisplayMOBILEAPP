@@ -3,7 +3,7 @@ import { StripeProvider } from "@stripe/stripe-react-native";
 
 interface Props {
   publishableKey: string;
-  children: React.ReactNode;
+  children: React.ReactElement | React.ReactElement[];
 }
 
 export function StripeProviderWrapper({ publishableKey, children }: Props) {

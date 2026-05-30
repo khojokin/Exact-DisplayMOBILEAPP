@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SDA Community",
+    "name": "SDA Community App",
     "slug": "sda-community",
     "version": "1.0.1",
     "orientation": "portrait",
@@ -15,10 +15,16 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "98",
+      "buildNumber": "152",
       "bundleIdentifier": "com.sdacommunity.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "CFBundleDisplayName": "SDA Community",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "SDA Community uses your camera for video calls.",
+        "NSMicrophoneUsageDescription": "SDA Community uses your microphone for voice and video calls.",
+        "NSPhotoLibraryUsageDescription": "SDA Community uses your photo library when you choose images for posts and profile updates.",
+        "NSPhotoLibraryAddUsageDescription": "SDA Community saves media to your photo library when you choose to download content.",
+        "NSLocationWhenInUseUsageDescription": "SDA Community uses your location to improve nearby church and community experiences."
       }
     },
     "android": {
@@ -36,6 +42,18 @@
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          },
+          "ios": {
+            "enableMultitaskingCameraAccess": false
+          }
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
       [
         "@stripe/stripe-react-native",
         {

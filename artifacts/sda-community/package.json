@@ -9,7 +9,9 @@
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "ios:appstore:local": "bash scripts/ios-local-appstore.sh",
+    "ios:appstore:local:upload": "bash scripts/ios-local-appstore.sh --upload"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -19,6 +21,7 @@
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/native": "^7.2.5",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@stripe/stripe-react-native": "^0.66.0",
     "@supabase/supabase-js": "2.49.0",
@@ -64,9 +67,22 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "^13.0.0",
+    "@livekit/react-native": "^2.10.3",
+    "@livekit/react-native-expo-plugin": "^1.0.2",
+    "@livekit/react-native-webrtc": "^144.0.0",
     "expo": "~54.0.34",
+    "expo-in-app-purchases": "^14.5.0",
     "expo-updates": "~29.0.17",
+    "livekit-client": "^2.19.0",
     "react": "19.1.0",
     "react-native": "0.81.5"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@stripe/stripe-react-native"
+      ]
+    }
   }
 }

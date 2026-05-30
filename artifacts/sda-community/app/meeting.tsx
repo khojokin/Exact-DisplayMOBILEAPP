@@ -16,17 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 import { useAdmin } from "@/hooks/useAdmin";
+import { buildConferenceUrl, isLiveKitConfigured } from "@/lib/livekit";
 
 function normalizeRoomCode(value: string) {
   return value.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
-}
-
-function buildMeetingUrl(roomCode: string, audioOnly: boolean) {
-  const base = `https://meet.jit.si/SDACommunity-${roomCode}`;
-  const hash = audioOnly
-    ? "#config.startWithVideoMuted=true&config.prejoinPageEnabled=true"
-    : "#config.startWithVideoMuted=false&config.prejoinPageEnabled=true";
-  return `${base}${hash}`;
 }
 
 export default function MeetingScreen() {
@@ -38,13 +31,14 @@ export default function MeetingScreen() {
   const [generatedRoom, setGeneratedRoom] = useState("");
 
   const roomCode = useMemo(() => normalizeRoomCode(roomInput || generatedRoom), [roomInput, generatedRoom]);
+  const usingLiveKit = isLiveKitConfigured();
 
   async function openMeeting(audioOnly: boolean) {
     if (!roomCode) {
       Alert.alert("Missing meeting code", "Enter or generate a meeting code first.");
       return;
     }
-    const url = buildMeetingUrl(roomCode, audioOnly);
+    const url = buildConferenceUrl(roomCode, audioOnly);
     await Haptics.selectionAsync();
     await WebBrowser.openBrowserAsync(url);
   }
@@ -54,7 +48,7 @@ export default function MeetingScreen() {
       Alert.alert("Missing meeting code", "Enter or generate a meeting code first.");
       return;
     }
-    const url = buildMeetingUrl(roomCode, false);
+    const url = buildConferenceUrl(roomCode, false);
     await Share.share({ message: `Join SDA Community meeting: ${url}` });
   }
 
@@ -130,7 +124,11 @@ export default function MeetingScreen() {
           <Text style={styles.secondaryBtnText}>Share Meeting Link</Text>
         </TouchableOpacity>
 
-        <Text style={styles.note}>Meetings open live in Jitsi and support real-time audio/video immediately.</Text>
+        <Text style={styles.note}>
+          {usingLiveKit
+            ? "Meetings are running on LiveKit and open with real-time audio/video."
+            : "Meetings currently use Jitsi. Configure LiveKit env vars to switch to your LiveKit rooms."}
+        </Text>
       </View>
     </View>
   );
