@@ -76,7 +76,7 @@ adminRouter.get("/admin/announcements", async (_req, res) => {
   }
 });
 
-adminRouter.post("/admin/announcements", async (req, res) => {
+adminRouter.post("/admin/announcements", async (req, res): Promise<void> => {
   const { title, body, createdById, isPinned } = req.body as {
     title?: unknown;
     body?: unknown;
@@ -85,10 +85,12 @@ adminRouter.post("/admin/announcements", async (req, res) => {
   };
 
   if (typeof title !== "string" || !title.trim()) {
-    return res.status(400).json({ error: "title is required" });
+    res.status(400).json({ error: "title is required" });
+    return;
   }
   if (typeof body !== "string" || !body.trim()) {
-    return res.status(400).json({ error: "body is required" });
+    res.status(400).json({ error: "body is required" });
+    return;
   }
 
   try {
@@ -117,10 +119,11 @@ adminRouter.post("/admin/announcements", async (req, res) => {
   }
 });
 
-adminRouter.delete("/admin/announcements/:id", async (req, res) => {
+adminRouter.delete("/admin/announcements/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
-    return res.status(400).json({ error: "invalid id" });
+    res.status(400).json({ error: "invalid id" });
+    return;
   }
 
   try {
@@ -178,13 +181,14 @@ adminRouter.get("/admin/users", async (req, res) => {
   }
 });
 
-adminRouter.patch("/admin/users/:id/role", async (req, res) => {
+adminRouter.patch("/admin/users/:id/role", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const { role } = req.body as { role?: unknown };
 
   const VALID_ROLES = ["member", "deacon", "elder", "pastor", "youth_leader", "admin"] as const;
   if (!VALID_ROLES.includes(role as any)) {
-    return res.status(400).json({ error: "invalid role" });
+    res.status(400).json({ error: "invalid role" });
+    return;
   }
 
   try {

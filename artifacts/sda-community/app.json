@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "152",
+      "buildNumber": "153",
       "bundleIdentifier": "com.sdacommunity.app",
       "infoPlist": {
         "CFBundleDisplayName": "SDA Community",
