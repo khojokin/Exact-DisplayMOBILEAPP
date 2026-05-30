@@ -85,4 +85,10 @@ config.resolver = {
         },
 };
 
+// Allow all hosts so Replit's proxy can reach Metro (required for preview pane)
+config.server = {
+  ...(config.server ?? {}),
+  dangerouslyDisableHostCheck: true,
+};
+
 module.exports = config;
