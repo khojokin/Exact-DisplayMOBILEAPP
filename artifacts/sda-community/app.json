@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "153",
+      "buildNumber": "155",
       "bundleIdentifier": "com.sdacommunity.app",
       "infoPlist": {
         "CFBundleDisplayName": "SDA Community",
@@ -25,10 +25,21 @@
         "NSPhotoLibraryUsageDescription": "SDA Community uses your photo library when you choose images for posts and profile updates.",
         "NSPhotoLibraryAddUsageDescription": "SDA Community saves media to your photo library when you choose to download content.",
         "NSLocationWhenInUseUsageDescription": "SDA Community uses your location to improve nearby church and community experiences."
-      }
+      },
+      "bitcode": false
     },
     "android": {
-      "backgroundColor": "#0A0A0A"
+      "backgroundColor": "#0A0A0A",
+      "permissions": [
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.BLUETOOTH"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -70,7 +81,7 @@
         "origin": "https://bf38caff-17cb-42b3-9bbe-f4a70b83300a-00-3ekt4pzyxikvn.janeway.replit.dev/"
       },
       "eas": {
-        "projectId": "86a3cc72-d8a2-415c-a2d5-4fd8864f89f1"
+        "projectId": "8346c539-7e5a-442f-9db5-332d1c6b975f"
       }
     },
     "runtimeVersion": {
