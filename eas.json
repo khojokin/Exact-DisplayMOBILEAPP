@@ -11,18 +11,14 @@
     "ft": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_SKIP_CLERK": "1",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": ""
+        "EXPO_PUBLIC_SKIP_AUTH": "true"
       }
     },
     "preview": {
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "ios": {
-        "buildType": "app-store"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
