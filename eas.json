@@ -8,11 +8,21 @@
       "developmentClient": true,
       "distribution": "internal"
     },
+    "ft": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SKIP_CLERK": "1",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": ""
+      }
+    },
     "preview": {
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "buildType": "app-store"
+      }
     }
   },
   "submit": {

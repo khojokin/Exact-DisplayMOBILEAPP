@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-expo";
+const SKIP_CLERK = (process?.env?.EXPO_PUBLIC_SKIP_CLERK === "1") || (process?.env?.SKIP_CLERK === "1");
 import { supabase } from "@/lib/supabase";
 
 export type AdminRole = "admin" | "super_admin" | "moderator" | "member";
@@ -18,6 +19,12 @@ export function useAdmin(): AdminState {
 
   useEffect(() => {
     if (!isLoaded) return;
+    if (SKIP_CLERK) {
+      // In FT/testing mode, treat current session as an admin to allow access.
+      setRole("super_admin");
+      setLoading(false);
+      return;
+    }
     if (!user?.id) {
       setRole("member");
       setLoading(false);

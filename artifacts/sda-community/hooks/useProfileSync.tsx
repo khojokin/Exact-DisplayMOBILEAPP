@@ -6,9 +6,11 @@ import { upsertProfile } from "@/lib/profiles";
 // Runs once per Clerk userId per app session.
 export function useProfileSync() {
   const { user, isLoaded, isSignedIn } = useUser();
+  const SKIP_CLERK = (process?.env?.EXPO_PUBLIC_SKIP_CLERK === "1") || (process?.env?.SKIP_CLERK === "1");
   const syncedUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    if (SKIP_CLERK) return; // Don't try to sync profiles when Clerk is disabled for FT/testing
     if (!isLoaded || !isSignedIn || !user?.id) return;
     if (syncedUserId.current === user.id) return;
 
