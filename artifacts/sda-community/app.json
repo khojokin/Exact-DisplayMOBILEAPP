@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "155",
+      "buildNumber": "162",
       "bundleIdentifier": "com.sdacommunity.app",
       "infoPlist": {
         "CFBundleDisplayName": "SDA Community",
@@ -39,7 +39,8 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH"
-      ]
+      ],
+      "package": "com.sdacommunity.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -81,7 +82,7 @@
         "origin": "https://bf38caff-17cb-42b3-9bbe-f4a70b83300a-00-3ekt4pzyxikvn.janeway.replit.dev/"
       },
       "eas": {
-        "projectId": "8346c539-7e5a-442f-9db5-332d1c6b975f"
+        "projectId": "86a3cc72-d8a2-415c-a2d5-4fd8864f89f1"
       }
     },
     "runtimeVersion": {

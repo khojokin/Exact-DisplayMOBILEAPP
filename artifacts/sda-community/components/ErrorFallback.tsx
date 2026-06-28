@@ -52,6 +52,9 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     default: "monospace",
   });
 
+  // Ensure error is visible in production
+  console.error("[ErrorFallback]", error);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {__DEV__ ? (
@@ -78,8 +81,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </Text>
 
         <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue.
+          {error.message || "An unexpected error occurred. Please reload the app."}
         </Text>
+
+        {__DEV__ && (
+          <Text style={[styles.devError, { color: "#FF6B6B" }]}>
+            {error.stack?.split("\n").slice(0, 3).join("\n")}
+          </Text>
+        )}
 
         <Pressable
           onPress={handleRestart}
@@ -201,6 +210,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  devError: {
+    fontSize: 12,
+    fontFamily: "monospace",
+    textAlign: "left",
+    marginTop: 8,
+    maxWidth: 400,
   },
   topButton: {
     position: "absolute",

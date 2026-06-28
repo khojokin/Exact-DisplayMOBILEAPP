@@ -18,19 +18,29 @@ export function useProfileSync() {
     const username = user.username?.trim() || null;
     const avatarUrl = user.imageUrl || null;
 
-    upsertProfile({
-      id: user.id,
-      fullName,
-      username,
-      avatarUrl,
-    })
+    let timeout: NodeJS.Timeout;
+    const syncPromise = Promise.race([
+      upsertProfile({
+        id: user.id,
+        fullName,
+        username,
+        avatarUrl,
+      }),
+      new Promise((_, reject) =>
+        (timeout = setTimeout(() => reject(new Error("Profile sync timeout")), 10000))
+      ),
+    ])
       .then(() => {
         syncedUserId.current = user.id;
+        console.log("[profile-sync] success for user", user.id);
       })
       .catch((error) => {
-        if (__DEV__) {
-          console.warn("[profile-sync] upsert failed", error);
-        }
+        console.warn("[profile-sync] error:", error?.message || error);
+        // Mark as synced anyway to prevent retries
+        syncedUserId.current = user.id;
+      })
+      .finally(() => {
+        clearTimeout(timeout);
       });
   }, [isLoaded, isSignedIn, user?.id, user?.fullName, user?.firstName, user?.username, user?.imageUrl]);
 }

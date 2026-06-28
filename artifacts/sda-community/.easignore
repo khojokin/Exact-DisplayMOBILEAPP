@@ -1,0 +1,17 @@
+*.ipa
+artifacts/
+.expo/
+.eas/
+build-*.ipa
+eas-build-*.ipa
+build-latest-local.ipa
+build-90-local.ipa
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/Pods
+ios/Pods/**
+ios/build
+ios/build/**
+ios/DerivedData
+ios/DerivedData/**

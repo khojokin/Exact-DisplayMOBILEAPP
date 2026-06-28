@@ -5,12 +5,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { Platform, View } from "react-native";
+import { Platform, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -23,7 +22,8 @@ import { VideoPostsProvider } from "@/hooks/useVideoPosts";
 import { StripeProviderWrapper } from "@/components/StripeProviderWrapper";
 import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
 import { ThemeProvider } from "@/hooks/useTheme";
-import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
+import { SessionProvider, useSession } from "@/lib/session";
+import { useProfileSync } from "@/hooks/useProfileSync";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -138,6 +138,40 @@ function RootLayoutNav() {
   );
 }
 
+function AppBootstrap() {
+  const { isLoaded } = useSession();
+  useProfileSync();
+
+  if (!isLoaded) {
+    return <View style={{ flex: 1, backgroundColor: "#0A0A0A" }} />;
+  }
+
+  try {
+    return (
+      <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
+        <SubscriptionProvider>
+          <VideoPostsProvider>
+            <AIProvider>
+              <NotificationProvider>
+                <RootLayoutNav />
+              </NotificationProvider>
+            </AIProvider>
+          </VideoPostsProvider>
+        </SubscriptionProvider>
+      </StripeProviderWrapper>
+    );
+  } catch (error) {
+    console.error("[AppBootstrap] Render error:", error);
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0A0A0A", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "#FFFFFF", textAlign: "center", paddingHorizontal: 16 }}>
+          Failed to initialize app. Please restart.
+        </Text>
+      </View>
+    );
+  }
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -152,35 +186,46 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Fallback: ensure splash is hidden after a timeout in case auth, fonts,
+  // or other initialization hang in production (prevents permanent black screen).
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const id = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 5000);
+    return () => clearTimeout(id);
+  }, []);
+
   if (!fontsLoaded && !fontError && Platform.OS !== "web") return <SafeAreaProvider><View style={{ flex: 1, backgroundColor: "#0A0A0A" }} /></SafeAreaProvider>;
 
-  return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <ErrorBoundary>
-          <QueryClientProvider client={queryClient}>
-            <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
-              <KeyboardProvider>
-                <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-                  <ClerkLoaded>
-                    <StripeProviderWrapper publishableKey={STRIPE_PUBLISHABLE_KEY}>
-                      <SubscriptionProvider>
-                        <VideoPostsProvider>
-                          <AIProvider>
-                            <NotificationProvider>
-                              <RootLayoutNav />
-                            </NotificationProvider>
-                          </AIProvider>
-                        </VideoPostsProvider>
-                      </SubscriptionProvider>
-                    </StripeProviderWrapper>
-                  </ClerkLoaded>
-                </ClerkProvider>
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </QueryClientProvider>
-        </ErrorBoundary>
-      </ThemeProvider>
-    </SafeAreaProvider>
-  );
+  try {
+    return (
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+                <KeyboardProvider>
+                  <SessionProvider>
+                    <AppBootstrap />
+                  </SessionProvider>
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  } catch (error) {
+    console.error("[RootLayout] Error:", error);
+    return (
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: "#0A0A0A", justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: "#FFFFFF", textAlign: "center", paddingHorizontal: 16 }}>
+            Failed to initialize: {error instanceof Error ? error.message : "Unknown error"}
+          </Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 }

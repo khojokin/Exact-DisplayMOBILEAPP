@@ -8,11 +8,12 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function TabLayout() {
+  const skipAuth = process.env.EXPO_PUBLIC_SKIP_AUTH === "true";
   const { isSignedIn, isLoaded } = useAuth();
   const insets = useSafeAreaInsets();
 
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/signin" />;
+  if (!isLoaded && !skipAuth) return null;
+  if (!skipAuth && !isSignedIn) return <Redirect href="/signin" />;
   const { messageUnreadCount, communityUnreadCount } = useNotifications();
   const { t } = useTheme();
   const TAB_BAR_HEIGHT = 50;

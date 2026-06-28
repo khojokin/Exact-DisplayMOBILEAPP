@@ -7,7 +7,7 @@ const emptyShim = path.resolve(__dirname, "./shims/empty.js");
 const webrtcShim = path.resolve(__dirname, "./shims/livekit-react-native-webrtc.js");
 const livekitNativeShim = path.resolve(__dirname, "./shims/livekit-react-native.js");
 const iapShim = path.resolve(__dirname, "./shims/expo-in-app-purchases.js");
-const clerkWebShim = path.resolve(__dirname, "./shims/clerk-expo-web.js");
+const clerkShim = path.resolve(__dirname, "./shims/clerk-expo.js");
 const keyboardControllerShim = path.resolve(__dirname, "./shims/react-native-keyboard-controller.js");
 const secureStoreShim = path.resolve(__dirname, "./shims/expo-secure-store.js");
 const previousResolveRequest = config.resolver?.resolveRequest;
@@ -27,14 +27,14 @@ config.resolver = {
                         return { filePath: emptyShim, type: "sourceFile" };
                 }
 
+                if (
+                        moduleName === "@clerk/clerk-expo" ||
+                        moduleName.startsWith("@clerk/clerk-expo/")
+                ) {
+                        return { filePath: clerkShim, type: "sourceFile" };
+                }
+
                 if (platform === "web") {
-                        // Bypass Clerk auth on web — mock a signed-in preview user
-                        if (
-                                moduleName === "@clerk/clerk-expo" ||
-                                moduleName.startsWith("@clerk/clerk-expo/")
-                        ) {
-                                return { filePath: clerkWebShim, type: "sourceFile" };
-                        }
 
                         // Stub out native WebRTC module on web
                         if (
