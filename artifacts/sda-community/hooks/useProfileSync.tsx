@@ -18,17 +18,18 @@ export function useProfileSync() {
     const username = user.username?.trim() || null;
     const avatarUrl = user.imageUrl || null;
 
-    let timeout: NodeJS.Timeout;
-    const syncPromise = Promise.race([
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    
+    Promise.race([
       upsertProfile({
         id: user.id,
         fullName,
         username,
         avatarUrl,
       }),
-      new Promise((_, reject) =>
-        (timeout = setTimeout(() => reject(new Error("Profile sync timeout")), 10000))
-      ),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Profile sync timeout")), 10000);
+      }),
     ])
       .then(() => {
         syncedUserId.current = user.id;
@@ -40,7 +41,9 @@ export function useProfileSync() {
         syncedUserId.current = user.id;
       })
       .finally(() => {
-        clearTimeout(timeout);
+        if (timeout !== null) {
+          clearTimeout(timeout);
+        }
       });
   }, [isLoaded, isSignedIn, user?.id, user?.fullName, user?.firstName, user?.username, user?.imageUrl]);
 }
