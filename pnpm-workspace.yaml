@@ -75,6 +75,9 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # shell-quote 1.8.1–1.8.3 are blocked by the Replit package firewall (security
+  # scan); 1.8.4 passes. Pin globally so react-devtools-core uses a clean version.
+  shell-quote: "1.8.4"
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"

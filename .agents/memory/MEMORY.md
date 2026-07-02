@@ -1,1 +1,2 @@
 - [Expo web native shims](expo-web-shims.md) — several native-only modules crash silently on web; all must be shimmed in metro.config.js resolver for web platform.
+- [shell-quote firewall block](shell-quote-firewall.md) — versions 1.8.1–1.8.3 are blocked by Replit's package firewall; 1.8.4 passes; override pinned in pnpm-workspace.yaml.

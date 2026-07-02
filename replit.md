@@ -14,6 +14,8 @@ A community platform for the Seventh-day Adventist (SDA) church — social feed,
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string (auto-provisioned by Replit)
 - Required env: `PORT` — set to 5000 (shared env var)
+- Required secrets: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase project for auth/realtime; app loads but auth/realtime fails without them
+- Optional secrets: `STRIPE_SECRET_KEY`, `APPLE_SHARED_SECRET`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
 
 ## Stack
 
