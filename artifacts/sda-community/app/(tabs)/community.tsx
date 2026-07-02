@@ -14,6 +14,11 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchCommunities, fetchCommunityFeed, type CommunityItem, type CommunityPostItem } from "@/lib/community";
+import { useTheme } from "@/hooks/useTheme";
+
+const webBlur = Platform.OS === "web"
+  ? ({ backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" } as any)
+  : {};
 
 function initials(name: string) {
   return name
@@ -36,6 +41,7 @@ function relativeTime(input: string) {
 
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTheme();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [loading, setLoading] = useState(true);
@@ -97,10 +103,21 @@ export default function CommunityScreen() {
   }, [communities]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: t.bg },
+        Platform.OS === "web"
+          ? ({
+              backgroundImage:
+                "radial-gradient(ellipse at 70% 20%, rgba(59,91,219,0.08) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(107,123,90,0.07) 0%, transparent 50%)",
+            } as any)
+          : {},
+      ]}
+    >
+      <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
 
-      <View style={[styles.header, { paddingTop: topPad }]}> 
+      <View style={[styles.header, { paddingTop: topPad }, webBlur]}> 
         <Text style={styles.headerTitle}>Community</Text>
         <TouchableOpacity onPress={() => router.push("/new-community" as any)} style={styles.headerBtn}>
           <Ionicons name="add-circle-outline" size={22} color="#fff" />
@@ -150,13 +167,15 @@ export default function CommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  container: { flex: 1, backgroundColor: "#07070A" },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   headerTitle: { color: "#fff", fontSize: 24, fontWeight: "700" },
   headerBtn: { padding: 4 },
@@ -171,10 +190,10 @@ const styles = StyleSheet.create({
   },
   communityPill: {
     width: 170,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#2C2C2E",
-    backgroundColor: "#111113",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(28,28,34,0.76)",
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -182,21 +201,22 @@ const styles = StyleSheet.create({
   communityPillMeta: { color: "#8E8E93", fontSize: 12, marginTop: 4 },
   emptyCommunities: {
     marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#2C2C2E",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     padding: 12,
-    backgroundColor: "#111113",
+    backgroundColor: "rgba(28,28,34,0.76)",
   },
   emptyText: { color: "#8E8E93", fontSize: 13 },
   center: { alignItems: "center", justifyContent: "center", paddingTop: 42, paddingHorizontal: 20 },
   helper: { color: "#B3B3B8", fontSize: 14 },
   postCard: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#2C2C2E",
-    backgroundColor: "#111113",
-    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.09)",
+    borderTopColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(24,24,30,0.78)",
+    padding: 14,
     marginBottom: 10,
   },
   postHeader: { flexDirection: "row", alignItems: "center", gap: 10 },

@@ -737,7 +737,13 @@ export default function HomeScreen() {
 
   const header = (
     <View>
-      <View style={[styles.topBar, { paddingTop: topPad }]}>
+      <View
+        style={[
+          styles.topBar,
+          { paddingTop: topPad },
+          Platform.OS === "web" ? ({ backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" } as any) : {},
+        ]}
+      >
         <TouchableOpacity onPress={handleLogoPress} activeOpacity={0.8}>
           <Image
             source={require("@/assets/images/sda-logo.png")}
@@ -773,7 +779,18 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: t.bg }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: t.bg },
+        Platform.OS === "web"
+          ? ({
+              backgroundImage:
+                "radial-gradient(ellipse at 25% 15%, rgba(107,123,90,0.10) 0%, transparent 55%), radial-gradient(ellipse at 80% 75%, rgba(74,103,65,0.07) 0%, transparent 55%)",
+            } as any)
+          : {},
+      ]}
+    >
       <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
 
       <PostActionsSheet
@@ -839,14 +856,16 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  container: { flex: 1, backgroundColor: "#07070A" },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: "#0A0A0A",
+    backgroundColor: "rgba(7, 7, 10, 0.92)",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   iconBtn: { padding: 8 },
   logoImg: { width: 36, height: 36, borderRadius: 8 },
@@ -866,7 +885,7 @@ const styles = StyleSheet.create({
     borderColor: "#0A0A0A",
   },
   notifBadgeText: { color: "#FFF", fontSize: 9, fontWeight: "800" },
-  storiesRow: { backgroundColor: "#0A0A0A" },
+  storiesRow: { backgroundColor: "transparent" },
   storiesContent: { paddingHorizontal: 14, paddingVertical: 10, gap: 14 },
   storyItem: { alignItems: "center", width: 62 },
   storyRing: {
@@ -902,10 +921,11 @@ const styles = StyleSheet.create({
   shortCard: {
     width: SCREEN_W * 0.44,
     height: 186,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#2C2C2E",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderTopColor: "rgba(255,255,255,0.16)",
     padding: 10,
     justifyContent: "flex-end",
   },
@@ -955,8 +975,15 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: "#6B7B5A" },
   filterText: { color: "#8E8E93", fontSize: 13, fontWeight: "500" },
   filterTextActive: { color: "#FFFFFF", fontWeight: "600" },
-  separator: { height: 8, backgroundColor: "#0A0A0A" },
-  postCard: { backgroundColor: "#111111", paddingVertical: 14 },
+  separator: { height: 8, backgroundColor: "#07070A" },
+  postCard: {
+    backgroundColor: "rgba(22, 22, 28, 0.80)",
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.07)",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.04)",
+  },
   postHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10, marginBottom: 10 },
   postHeaderText: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
@@ -990,17 +1017,17 @@ const styles = StyleSheet.create({
   commentAuthor: { color: "#FFFFFF", fontWeight: "600" },
   viewComments: { color: "#8E8E93", fontSize: 13, paddingHorizontal: 14, marginBottom: 8 },
   addCommentRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10 },
-  addCommentInput: { flex: 1, backgroundColor: "#1C1C1E", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  addCommentInput: { flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   addCommentPlaceholder: { color: "#636366", fontSize: 13 },
   // Suggested people banner
   suggestBanner: {
-    backgroundColor: "#111111",
+    backgroundColor: "rgba(20, 20, 26, 0.82)",
     paddingTop: 14,
     paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#2C2C2E",
+    borderTopColor: "rgba(255,255,255,0.09)",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#2C2C2E",
+    borderBottomColor: "rgba(255,255,255,0.04)",
   },
   suggestBannerHeader: {
     flexDirection: "row",
@@ -1014,8 +1041,11 @@ const styles = StyleSheet.create({
   suggestScroll: { paddingHorizontal: 14, gap: 10 },
   personCard: {
     width: 102,
-    backgroundColor: "#1C1C1E",
-    borderRadius: 14,
+    backgroundColor: "rgba(32, 32, 40, 0.78)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderTopColor: "rgba(255,255,255,0.16)",
     padding: 10,
     alignItems: "center",
     gap: 3,
@@ -1046,13 +1076,17 @@ const styles = StyleSheet.create({
   // Bottom sheet styles
   sheetOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.72)",
     justifyContent: "flex-end",
   },
   sheetContainer: {
-    backgroundColor: "#1C1C1E",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: "rgba(14, 14, 20, 0.97)",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
     maxHeight: SCREEN_H * 0.75,
@@ -1061,7 +1095,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#3C3C3E",
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignSelf: "center",
     marginTop: 10,
     marginBottom: 16,
@@ -1075,7 +1109,7 @@ const styles = StyleSheet.create({
   sheetAuthorInfo: { flex: 1 },
   sheetAuthorName: { color: "#FFF", fontSize: 15, fontWeight: "700" },
   sheetAuthorTime: { color: "#8E8E93", fontSize: 12, marginTop: 2 },
-  sheetDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#3C3C3E", marginBottom: 8 },
+  sheetDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.08)", marginBottom: 8 },
   sheetAction: {
     flexDirection: "row",
     alignItems: "center",
@@ -1085,15 +1119,19 @@ const styles = StyleSheet.create({
   sheetActionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   sheetActionLabel: { fontSize: 15, fontWeight: "500" },
   sheetCancelBtn: {
     marginTop: 8,
-    backgroundColor: "#2C2C2E",
-    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     height: 50,
     alignItems: "center",
     justifyContent: "center",
@@ -1103,9 +1141,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 12,
     marginBottom: 4,
-    backgroundColor: "#111111",
-    borderRadius: 16,
+    backgroundColor: "rgba(24, 20, 10, 0.82)",
+    borderRadius: 18,
     padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(184,134,11,0.22)",
+    borderTopColor: "rgba(255,200,60,0.20)",
     borderLeftWidth: 3,
     borderLeftColor: "#B8860B",
     overflow: "hidden",

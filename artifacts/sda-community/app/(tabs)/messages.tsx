@@ -138,7 +138,18 @@ export default function MessagesScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: t.bg }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: t.bg },
+        Platform.OS === "web"
+          ? ({
+              backgroundImage:
+                "radial-gradient(ellipse at 60% 10%, rgba(98,100,167,0.09) 0%, transparent 50%), radial-gradient(ellipse at 15% 85%, rgba(74,103,65,0.07) 0%, transparent 55%)",
+            } as any)
+          : {},
+      ]}
+    >
       <StatusBar barStyle={t.statusBar} backgroundColor={t.bg} />
 
       <View style={[styles.header, { paddingTop: topPad }]}> 
@@ -160,7 +171,7 @@ export default function MessagesScreen() {
         </View>
       </View>
 
-      <View style={[styles.searchWrap, { backgroundColor: t.card, borderColor: t.border }]}> 
+      <View style={styles.searchWrap}> 
         <Ionicons name="search-outline" size={15} color={t.mutedText} />
         <TextInput
           style={[styles.searchInput, { color: t.text }]}
@@ -193,7 +204,7 @@ export default function MessagesScreen() {
           }
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.row, { borderBottomColor: t.border }]}
+              style={styles.row}
               onPress={() => router.push({ pathname: "/dm/[id]", params: { id: item.id } })}
             >
               <View style={[styles.avatar, { backgroundColor: "#3B5BDB" }]}> 
@@ -221,7 +232,7 @@ export default function MessagesScreen() {
             <View style={{ width: 56 }} />
           </View>
 
-          <View style={[styles.searchWrap, { marginHorizontal: 16, backgroundColor: t.card, borderColor: t.border }]}> 
+          <View style={[styles.searchWrap, { marginHorizontal: 16 }]}> 
             <Ionicons name="search-outline" size={15} color={t.mutedText} />
             <TextInput
               style={[styles.searchInput, { color: t.text }]}
@@ -243,7 +254,7 @@ export default function MessagesScreen() {
               </View>
             }
             renderItem={({ item }) => (
-              <TouchableOpacity style={[styles.row, { borderBottomColor: t.border }]} onPress={() => startDirectMessage(item)}>
+              <TouchableOpacity style={styles.row} onPress={() => startDirectMessage(item)}>
                 <View style={[styles.avatar, { backgroundColor: "#6B7B5A" }]}> 
                   <Text style={styles.avatarText}>{initials(item.name)}</Text>
                 </View>
@@ -265,6 +276,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   headerTitle: { fontSize: 24, fontWeight: "700" },
   headerBtn: { padding: 6 },
@@ -279,13 +292,16 @@ const styles = StyleSheet.create({
   searchWrap: {
     marginHorizontal: 16,
     marginBottom: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 10,
-    height: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.09)",
+    borderTopColor: "rgba(255,255,255,0.13)",
+    paddingHorizontal: 12,
+    height: 42,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    backgroundColor: "rgba(28,28,34,0.72)",
   },
   searchInput: { flex: 1, fontSize: 14 },
   centerState: { alignItems: "center", justifyContent: "center", paddingTop: 48, paddingHorizontal: 16 },
@@ -299,8 +315,9 @@ const styles = StyleSheet.create({
   retryBtnText: { color: "#fff", fontWeight: "600" },
   row: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.06)",
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -324,6 +341,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   composeTitle: { fontSize: 17, fontWeight: "700" },
   cancelText: { color: "#3B5BDB", fontSize: 16, fontWeight: "500" },

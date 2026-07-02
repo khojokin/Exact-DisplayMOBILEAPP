@@ -28,13 +28,19 @@ export default function TabLayout() {
           headerShown: false,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: t.tabBar,
+            backgroundColor: t.glassTabBar,
             borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: t.tabBorder,
+            borderTopColor: t.glassBorder,
             height: TAB_BAR_HEIGHT + bottomPad,
             paddingBottom: bottomPad,
             paddingTop: 4,
             elevation: 0,
+            ...(Platform.OS === "web"
+              ? ({
+                  backdropFilter: "blur(28px)",
+                  WebkitBackdropFilter: "blur(28px)",
+                } as any)
+              : {}),
           },
         }}
       >

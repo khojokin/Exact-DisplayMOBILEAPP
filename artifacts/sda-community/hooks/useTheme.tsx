@@ -4,8 +4,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const THEME_KEY = "@sda_theme_dark";
 
 export const DARK = {
-  bg: "#0A0A0A",
-  bgSecondary: "#111111",
+  bg: "#07070A",
+  bgSecondary: "#0E0E12",
   card: "#1C1C1E",
   text: "#FFFFFF",
   subtext: "#8E8E93",
@@ -28,10 +28,18 @@ export const DARK = {
   headerBorder: "#1D1D1F",
   sectionHeader: "#8E8E93",
   danger: "#FF453A",
+  // Glass tokens
+  glassCard: "rgba(28, 28, 34, 0.76)",
+  glassBg: "rgba(10, 10, 14, 0.92)",
+  glassBorder: "rgba(255, 255, 255, 0.09)",
+  glassHighlight: "rgba(255, 255, 255, 0.14)",
+  glassTabBar: "rgba(6, 6, 10, 0.90)",
+  glassSheet: "rgba(16, 16, 22, 0.97)",
+  glassInput: "rgba(255, 255, 255, 0.06)",
 };
 
 export const LIGHT = {
-  bg: "#F2F2F7",
+  bg: "#F0F0F5",
   bgSecondary: "#FFFFFF",
   card: "#FFFFFF",
   text: "#000000",
@@ -55,6 +63,14 @@ export const LIGHT = {
   headerBorder: "#E5E5EA",
   sectionHeader: "#6D6D6D",
   danger: "#FF3B30",
+  // Glass tokens
+  glassCard: "rgba(255, 255, 255, 0.72)",
+  glassBg: "rgba(240, 240, 248, 0.92)",
+  glassBorder: "rgba(0, 0, 0, 0.07)",
+  glassHighlight: "rgba(255, 255, 255, 0.90)",
+  glassTabBar: "rgba(255, 255, 255, 0.88)",
+  glassSheet: "rgba(248, 248, 252, 0.97)",
+  glassInput: "rgba(0, 0, 0, 0.04)",
 };
 
 export type ThemeColors = typeof DARK;
